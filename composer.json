@@ -11,11 +11,11 @@
         "flex",
         "symfony"
     ],
-    "homepage": "https://github.com/fyrst-dev/shopware-cd-template",
+    "homepage": "https://github.com/fyrst-dev/shopware-cd",
     "support": {
         "docs": "https://github.com/fyrst-dev/recipes",
-        "source": "https://github.com/fyrst-dev/shopware-cd-template",
-        "issues": "https://github.com/fyrst-dev/shopware-cd-template/issues"
+        "source": "https://github.com/fyrst-dev/shopware-cd",
+        "issues": "https://github.com/fyrst-dev/shopware-cd/issues"
     },
     "require": {
         "php": ">=8.2"

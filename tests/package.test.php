@@ -29,8 +29,20 @@ fyrst_assert(!isset($composer['extra']['class']), 'no Composer plugin extra.clas
 fyrst_assert(!isset($composer['bin']), 'no composer bin wrappers');
 fyrst_assert(!isset($composer['scripts']['post-install-cmd']), 'no post-install-cmd copier');
 fyrst_assert(
+    ($composer['homepage'] ?? '') === 'https://github.com/fyrst-dev/shopware-cd',
+    'homepage is fyrst-dev/shopware-cd'
+);
+fyrst_assert(
     ($composer['support']['docs'] ?? '') === 'https://github.com/fyrst-dev/recipes',
     'support.docs points at fyrst-dev/recipes'
+);
+fyrst_assert(
+    ($composer['support']['source'] ?? '') === 'https://github.com/fyrst-dev/shopware-cd',
+    'support.source is fyrst-dev/shopware-cd'
+);
+fyrst_assert(
+    ($composer['support']['issues'] ?? '') === 'https://github.com/fyrst-dev/shopware-cd/issues',
+    'support.issues is fyrst-dev/shopware-cd'
 );
 fyrst_assert(
     str_contains((string) ($composer['description'] ?? ''), 'fyrst-dev/recipes'),
@@ -62,6 +74,14 @@ fyrst_assert(
 fyrst_assert(
     !str_contains($readme, 'flex-recipe/'),
     'README does not list flex-recipe/ as part of this repo'
+);
+fyrst_assert(
+    str_contains($readme, 'https://github.com/fyrst-dev/shopware-cd'),
+    'README links to fyrst-dev/shopware-cd'
+);
+fyrst_assert(
+    !str_contains($readme, 'shopware-cd-template'),
+    'README does not use the old shopware-cd-template repo name'
 );
 
 $create = (string) file_get_contents($root . '/CREATE.md');
