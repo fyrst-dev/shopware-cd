@@ -19,7 +19,7 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] Docker = **yes** in the wizard (required; `shopware-cli` `--docker` for non-interactive)
 - [ ] Flex dropped `docker/Dockerfile` from `shopware/docker` (preferred) **or** this recipe’s root `Dockerfile` as fallback
 - [ ] CI `DOCKERFILE` points at the file you actually build (do not maintain two Dockerfiles)
-- [ ] Flex copied `.github/workflows/cd.yml`, `.gitlab-ci.yml`, `compose.yaml`, `compose.prod.yaml`, `deploy/`
+- [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `compose.yaml`, `compose.prod.yaml`, `deploy/`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] `.env` was **not** written by Flex; copy `.env.example` → `.env` yourself
 

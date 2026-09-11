@@ -26,7 +26,7 @@ Flex then:
 
 - `shopware/docker` → official `docker/Dockerfile` (prefer this; keep this recipe’s root `Dockerfile` as fallback; set CI `DOCKERFILE=docker/Dockerfile`)
 - `shopware/deployment-helper` → install/update at deploy time
-- `fyrst/shopware-cd` → dual CI, Compose, `deploy/`, `.shopware-project.yml`, `.env.example`, `.dockerignore`
+- `fyrst/shopware-cd` → dual CI, Compose, `deploy/`, `.shopware-project.yaml`, `.env.example`, `.dockerignore`
 
 Wizard defaults for fyrst: current stable Shopware, **Docker = yes**.
 
@@ -85,7 +85,9 @@ Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, co
 | `VPS_HOST` / `VPS_USER` / `VPS_PATH` | SSH target and checkout path |
 | `SSH_KNOWN_HOSTS` | Recommended instead of blindly accepting host keys |
 
-Placeholders live in the copied `.github/workflows/cd.yml`, `.gitlab-ci.yml`, and `.env.example`. Copy `.env.example` → `.env` yourself.
+Placeholders live in the copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, and `.env.example`. Copy `.env.example` → `.env` yourself.
+
+GitLab still looks for `.gitlab-ci.yml` by default — set Settings → CI/CD → CI/CD configuration file to `.gitlab-ci.yaml`. GitHub Actions and shopware-cli load the `.yaml` names directly.
 
 ## CD pipeline
 
@@ -236,13 +238,13 @@ vendor/bin/shopware-deployment-helper run \
     └── root/                      # files Flex copies into the shop
         ├── Dockerfile             # fallback; prefer Flex docker/Dockerfile
         ├── .dockerignore
-        ├── .shopware-project.yml
+        ├── .shopware-project.yaml
         ├── compose.yaml
         ├── compose.prod.yaml
         ├── .env.example
         ├── .gitignore
-        ├── .github/workflows/cd.yml
-        ├── .gitlab-ci.yml
+        ├── .github/workflows/cd.yaml
+        ├── .gitlab-ci.yaml
         └── deploy/
 ```
 

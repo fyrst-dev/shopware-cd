@@ -46,8 +46,8 @@ fyrst_assert(array_keys($manifest) === ['copy-from-recipe'], 'manifest.json only
 fyrst_assert(is_file($recipe . '/post-install.txt'), 'post-install.txt exists');
 
 $expected = [
-    '.github/workflows/cd.yml',
-    '.gitlab-ci.yml',
+    '.github/workflows/cd.yaml',
+    '.gitlab-ci.yaml',
     'compose.yaml',
     'compose.prod.yaml',
     'deploy/vps-release.sh',
@@ -57,7 +57,7 @@ $expected = [
     'Dockerfile',
     '.dockerignore',
     '.env.example',
-    '.shopware-project.yml',
+    '.shopware-project.yaml',
     '.gitignore',
 ];
 
@@ -69,9 +69,10 @@ foreach ($expected as $rel) {
 fyrst_assert(!is_file($recipeRoot . '/.env'), 'recipe does not contain .env');
 fyrst_assert(is_executable($recipeRoot . '/deploy/vps-release.sh'), 'deploy/vps-release.sh is executable');
 
-$cd = (string) file_get_contents($recipeRoot . '/.github/workflows/cd.yml');
-fyrst_assert(str_contains($cd, 'name: CD'), 'cd.yml is the GitHub CD workflow');
+$cd = (string) file_get_contents($recipeRoot . '/.github/workflows/cd.yaml');
+fyrst_assert(str_contains($cd, 'name: CD'), 'cd.yaml is the GitHub CD workflow');
 fyrst_assert(!is_file($root . '/.github/workflows/cd.yml'), 'shop CD is not at package .github (recipe only)');
+fyrst_assert(!is_file($root . '/.github/workflows/cd.yaml'), 'shop CD yaml is not at package .github (recipe only)');
 
 // Simulate Flex copy-from-recipe "root/" → ""
 $shop = sys_get_temp_dir() . '/fyrst-flex-' . bin2hex(random_bytes(4));
