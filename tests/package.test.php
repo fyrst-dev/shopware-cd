@@ -202,6 +202,27 @@ fyrst_assert(
     'README sets COMPOSE_PROJECT_NAME from shop id + deploy env'
 );
 fyrst_assert(
+    str_contains($readme, '`COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**'),
+    'README marks COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT as optional'
+);
+fyrst_assert(
+    str_contains($readme, 'SHOPWARE_DATA_BASE'),
+    'README names optional SHOPWARE_DATA_BASE'
+);
+fyrst_assert(
+    str_contains($readme, 'Compose uses those SoT vars directly')
+        || str_contains($readme, 'interpolates `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV`, and `SHOPWARE_DATA_BASE` **directly**'),
+    'README states Compose uses SHOPWARE_SHOP_ID / SHOPWARE_DEPLOY_ENV / SHOPWARE_DATA_BASE directly'
+);
+fyrst_assert(
+    !str_contains($readme, 'set explicitly in `.env`'),
+    'README does not require COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT to be set explicitly'
+);
+fyrst_assert(
+    !str_contains($readme, 'Compose does not reliably nest'),
+    'README does not say Compose cannot interpolate SoT vars'
+);
+fyrst_assert(
     str_contains($readme, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}'),
     'README documents default SHOPWARE_DATA_ROOT as shop/env-scoped'
 );
@@ -332,6 +353,22 @@ fyrst_assert(
     'CREATE.md sets COMPOSE_PROJECT_NAME from shop id + deploy env'
 );
 fyrst_assert(
+    str_contains($create, '`COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**'),
+    'CREATE.md marks COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT as optional'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_DATA_BASE'),
+    'CREATE.md names optional SHOPWARE_DATA_BASE'
+);
+fyrst_assert(
+    str_contains($create, 'Compose uses those SoT vars directly'),
+    'CREATE.md states Compose uses SoT vars directly'
+);
+fyrst_assert(
+    !str_contains($create, 'set explicitly in `.env`'),
+    'CREATE.md does not require COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT to be set explicitly'
+);
+fyrst_assert(
     str_contains($create, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}'),
     'CREATE.md documents default SHOPWARE_DATA_ROOT as shop/env-scoped'
 );
@@ -457,12 +494,20 @@ foreach (['README.md' => $readme, 'CREATE.md' => $create] as $name => $text) {
         "{$name} does not chown a global /var/lib/shopware/data"
     );
     fyrst_assert(
-        !preg_match('#default `/var/lib/shopware/data`(?!/)#', $text),
+        !preg_match('#SHOPWARE_DATA_ROOT[^\n]{0,160}default `/var/lib/shopware/data`(?!/)#', $text),
         "{$name} does not default SHOPWARE_DATA_ROOT to /var/lib/shopware/data without shop/env"
     );
     fyrst_assert(
         !preg_match('/^name:\s*shopware\s*$/m', $text),
         "{$name} does not hardcode Compose name: shopware"
+    );
+    fyrst_assert(
+        !str_contains($text, 'Compose does not reliably nest'),
+        "{$name} does not say Compose cannot interpolate SoT vars"
+    );
+    fyrst_assert(
+        !str_contains($text, 'set explicitly in `.env`'),
+        "{$name} does not require expanded COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT in .env"
     );
 
     preg_match_all('#/var/lib/shopware/data(?:/[^\s`\'")]+)?#', $text, $dataRoots);
@@ -478,8 +523,9 @@ foreach (['README.md' => $readme, 'CREATE.md' => $create] as $name => $text) {
                     str_contains($text, 'single global `/var/lib/shopware/data`')
                     || str_contains($text, 'not a global `/var/lib/shopware/data`')
                     || str_contains($text, 'global `/var/lib/shopware/data` without')
+                    || str_contains($text, 'SHOPWARE_DATA_BASE')
                 ),
-            "{$name} data path is shop/env-scoped (or an anti-pattern): {$path}"
+            "{$name} data path is shop/env-scoped (or DATA_BASE / anti-pattern): {$path}"
         );
     }
 }
