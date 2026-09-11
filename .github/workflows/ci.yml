@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Overlay apply
+    name: Flex recipe
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,17 +21,8 @@ jobs:
           coverage: none
           tools: composer
 
-      - name: PHP syntax
-        run: find bin src tests -name '*.php' -print0 | xargs -0 -n1 php -l
-
       - name: Validate composer.json
         run: composer validate --no-check-publish
 
-      - name: Apply CLI tests
-        run: php tests/apply.test.php
-
-      - name: Create --dry-run
-        run: php tests/create.test.php
-
-      - name: Composer require applies overlay
-        run: php tests/composer-plugin.test.php
+      - name: Recipe layout
+        run: php tests/recipe.test.php

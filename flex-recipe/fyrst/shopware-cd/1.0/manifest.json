@@ -1,0 +1,6 @@
+{
+    "aliases": ["fyrst-shopware-cd"],
+    "copy-from-recipe": {
+        "root/": ""
+    }
+}

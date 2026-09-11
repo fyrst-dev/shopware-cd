@@ -3,9 +3,9 @@
 # Stages (same as .github/workflows/cd.yml): build → push extra tags → deploy.
 # shopware-cli runs only inside the Dockerfile (shopware-cli image), not on the runner.
 #
-# Installed into shops by `fyrst/shopware-cd apply` at `.gitlab-ci.yml`.
-# Workflow rules require `bin/console` so the fyrst/shopware-cd package repo
-# never runs shop CD (it has composer.json but no Shopware console).
+# Copied into shops by the Symfony Flex recipe (`copy-from-recipe` → shop root).
+# Workflow rules require `bin/console` so this Packagist library never runs
+# shop CD (it has composer.json but no Shopware console).
 #
 # ---------------------------------------------------------------------------
 # CI/CD variables (Settings → CI/CD → Variables). Mask tokens. Never commit them.

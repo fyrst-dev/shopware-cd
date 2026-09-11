@@ -3,9 +3,9 @@
 # Stages (same as .gitlab-ci.yml): build → push extra tags → deploy.
 # shopware-cli runs only inside the Dockerfile (shopware-cli image), not on the runner.
 #
-# Installed into shops by `fyrst/shopware-cd apply` at `.github/workflows/cd.yml`.
+# Copied into shops by the Symfony Flex recipe (`copy-from-recipe` → shop root).
 # Preflight runs CD only for a real Shopware shop (bin/console / shopware/*),
-# never for the fyrst/shopware-cd package repo itself.
+# never for the fyrst/shopware-cd Packagist library itself.
 #
 # ---------------------------------------------------------------------------
 # Required secrets (Settings → Secrets and variables → Actions)

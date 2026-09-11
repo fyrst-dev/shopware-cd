@@ -1,5 +1,5 @@
-# Package-level ignores for fyrst/shopware-cd.
-# Shop gitignore lives in overlay/.gitignore and is copied by apply.
+# Package-level ignores for fyrst/shopware-cd (the Packagist library).
+# Shop gitignore is in flex-recipe/fyrst/shopware-cd/1.0/root/.gitignore (Flex copy).
 
 /vendor/
 composer.lock
@@ -9,8 +9,6 @@ composer.lock
 /.phpunit.cache
 /auth.json
 .env
-.env.*
-!.env.example
 *.swp
 *.bak
 .DS_Store
