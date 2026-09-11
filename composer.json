@@ -1,0 +1,55 @@
+{
+    "name": "fyrst/shopware-cd",
+    "description": "fyrst.dev Shopware continuous-deploy overlay: Composer-native apply of dual CI, Compose, and VPS deploy files after shopware-cli project create. Not a Shopware installation.",
+    "license": "proprietary",
+    "type": "composer-plugin",
+    "keywords": [
+        "shopware",
+        "docker",
+        "deploy",
+        "ci",
+        "overlay"
+    ],
+    "homepage": "https://github.com/fyrst-dev/shopware-cd-template",
+    "support": {
+        "docs": "https://app.clickup.com/90151931897/docs/2kyqjkzt-915",
+        "source": "https://github.com/fyrst-dev/shopware-cd-template"
+    },
+    "require": {
+        "php": ">=8.2",
+        "composer-plugin-api": "^2.2"
+    },
+    "suggest": {
+        "shopware/docker": "Official multi-stage Dockerfile via Symfony Flex (usually docker/Dockerfile). Require it in the shop; this overlay's Dockerfile is a fallback only.",
+        "shopware/deployment-helper": "Deploy-time install/update. Require it in the shop (bin/create does this). Not required here so this package never pulls Shopware core."
+    },
+    "autoload": {
+        "psr-4": {
+            "Fyrst\\ShopwareCd\\": "src/"
+        }
+    },
+    "bin": [
+        "bin/fyrst-shopware-cd"
+    ],
+    "extra": {
+        "class": "Fyrst\\ShopwareCd\\Composer\\Plugin",
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    },
+    "scripts": {
+        "apply": "php bin/fyrst-shopware-cd apply",
+        "post-install-cmd": [
+            "Fyrst\\ShopwareCd\\Composer\\Scripts::applyIfShop"
+        ],
+        "post-update-cmd": [
+            "Fyrst\\ShopwareCd\\Composer\\Scripts::applyIfShop"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "fyrst/shopware-cd": true
+        }
+    }
+}
