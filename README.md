@@ -4,7 +4,7 @@ Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
 This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library only**.
 
-This package does **not** contain overlay files. **Symfony Flex** loads CI, Compose, deploy, Dockerfile fallback, `.env.example`, and related shop files from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`), same pattern as [`shopware/docker`](https://github.com/shopware/docker).
+This package does **not** contain overlay files. **Symfony Flex** loads CI, Compose, deploy, `.env.example`, and related shop files from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
@@ -54,7 +54,7 @@ Run Composer **inside Docker** when the web container is up (`docker compose exe
 
 Flex then:
 
-- `shopware/docker` → official `docker/Dockerfile` (prefer this; keep the fyrst recipe’s root `Dockerfile` as fallback; set CI `DOCKERFILE=docker/Dockerfile`)
+- `shopware/docker` → **required**. Flex copies official `docker/Dockerfile`. Image builds **always** use that file. CI `DOCKERFILE=docker/Dockerfile` (or default to that). The fyrst recipe does **not** ship a shop-root `Dockerfile`.
 - `shopware/deployment-helper` → install/update at deploy time
 - `fyrst/shopware-cd` → dual CI, Compose, `deploy/`, `.shopware-project.yaml`, `.env.example`, `.dockerignore` (from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package)
 
@@ -86,10 +86,11 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Topic | Decision |
 | --- | --- |
 | Create | `shopware-cli project create` / `npx @shopware-ag/shopware-cli` |
-| Overlay | `extra.symfony.endpoint` (fyrst-dev/recipes first) then `composer require … fyrst/shopware-cd` + Symfony Flex |
+| Overlay | `extra.symfony.endpoint` (fyrst-dev/recipes first) then `composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd` + Symfony Flex |
 | Local | Docker via `shopware-cli project dev` |
 | Runtime | App **always** runs in Docker (`shopware/docker` / `ghcr.io/shopware/docker-base`) |
-| Build | `shopware-cli project ci` inside a multi-stage Dockerfile |
+| Image | Always `docker/Dockerfile` from required `shopware/docker`. CI `DOCKERFILE=docker/Dockerfile` (or default to that). |
+| Build | `shopware-cli project ci` inside that multi-stage `docker/Dockerfile` |
 | CI | GitHub Actions **and** GitLab CI, same stages |
 | Primary deploy | Docker Compose on a VPS (pull image, up web, one-shot setup) |
 | Optional deploy | Managed container host (same image; only the deploy job differs) |
@@ -107,6 +108,7 @@ Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, co
 | `COMPOSER_AUTH` | Optional JSON for private Composer repos (`auth.json`) |
 | `REGISTRY_*` | Push the image (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or GitHub `GITHUB_TOKEN` / GitLab `CI_REGISTRY_*`) |
 | `REGISTRY_IMAGE` | Optional override of the image name |
+| `DOCKERFILE` | Image build file. Always `docker/Dockerfile` (or default to that). |
 
 **Runtime (VPS `.env` mode `0600`, or managed-host env):**
 
@@ -161,7 +163,7 @@ shopware-cli project dev
 - **Primary (Compose / VPS):** `deploy/README.md` after Flex copies it.
 - **Optional (managed host):** `deploy/managed/README.md`. Gate with `DEPLOY_TARGET=managed`.
 
-Do **not** maintain a second Dockerfile per target or per CI system.
+The only image build file is `docker/Dockerfile`. Do **not** maintain a second Dockerfile per target or per CI system.
 
 ## Image contract
 
@@ -171,7 +173,7 @@ Do **not** maintain a second Dockerfile per target or per CI system.
 | Default branch (`main`) | also `:latest` |
 | Git tag `v*` | also `:semver` (`1.2.3`, `1.2`) |
 
-PHP is pinned to **8.3** via `PHP_VERSION` in the Dockerfile / Compose build args.
+PHP is pinned to **8.3** via `PHP_VERSION` in `docker/Dockerfile` / Compose build args.
 
 ## How Flex finds the recipe
 
@@ -216,7 +218,9 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 ## Anti-patterns
 
 - Compiling assets or themes on the VPS after the image is built
-- Different Dockerfiles per CI system or per deploy target
+- Skipping `shopware/docker` on the `composer require` line
+- Building from a shop-root `Dockerfile` (the fyrst recipe does not provide one)
+- Different Dockerfiles per CI system or per deploy target (always `docker/Dockerfile`)
 - Manual FTP/rsync of `vendor/`
 - Git submodules for this overlay
 - Custom `create` / `apply` CLIs or Composer plugins that copy files

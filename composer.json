@@ -1,6 +1,6 @@
 {
     "name": "fyrst/shopware-cd",
-    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Overlay files (CI, Compose, deploy) are served by Symfony Flex from fyrst-dev/recipes, not this package. Not a Shopware installation.",
+    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Overlay files (CI, Compose, deploy) are served by Symfony Flex from fyrst-dev/recipes, not this package. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
     "license": "MIT",
     "type": "library",
     "keywords": [
@@ -21,7 +21,7 @@
         "php": ">=8.2"
     },
     "suggest": {
-        "shopware/docker": "Official multi-stage Dockerfile via Symfony Flex (usually docker/Dockerfile). Prefer that file; the fyrst-dev/recipes recipe includes a root Dockerfile as fallback.",
+        "shopware/docker": "Required. Require it on the same composer require line as fyrst/shopware-cd. Flex copies the official multi-stage Dockerfile to docker/Dockerfile. Image builds always use that file; set CI DOCKERFILE=docker/Dockerfile (or default to that).",
         "shopware/deployment-helper": "Deploy-time install/update. Require it in the shop in the same composer require as this package."
     },
     "extra": {

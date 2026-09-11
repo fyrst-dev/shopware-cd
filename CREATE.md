@@ -6,6 +6,8 @@ Use with the locked process: [Shopware Create & Continuous Deploy](https://app.c
 
 This package (`fyrst/shopware-cd`) is a thin Packagist library. It does **not** contain overlay files; Flex loads them from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes). There is **no** Composer dependency on that recipes repo.
 
+Shops **must** `composer require shopware/docker` on the same line as `fyrst/shopware-cd`. The image build file is always `docker/Dockerfile`.
+
 ## Create
 
 Configure the Flex endpoint **before** `composer require`. Flex will **not** copy overlay files from `flex://defaults` alone.
@@ -24,8 +26,8 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 
 - [ ] Docker = **yes** in the wizard (required; `shopware-cli` `--docker` for non-interactive)
 - [ ] `extra.symfony.endpoint` is **fyrst-dev/recipes**, then shopware/recipes, then `flex://defaults` — set **before** `composer require`
-- [ ] Flex dropped `docker/Dockerfile` from `shopware/docker` (preferred) **or** the fyrst recipe’s root `Dockerfile` as fallback (from fyrst-dev/recipes)
-- [ ] CI `DOCKERFILE` points at the file you actually build (do not maintain two Dockerfiles)
+- [ ] Flex dropped `docker/Dockerfile` from `shopware/docker` (required; same `composer require` as `fyrst/shopware-cd`)
+- [ ] CI `DOCKERFILE=docker/Dockerfile` (or default to that). Do not add a shop-root `Dockerfile`.
 - [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `compose.yaml`, `compose.prod.yaml`, `deploy/`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] `.env` was **not** written by Flex; copy `.env.example` → `.env` yourself
@@ -62,5 +64,6 @@ Fill placeholders — never commit values.
 - [ ] Do not skip the fyrst-dev/recipes endpoint before `composer require` (Flex copies nothing)
 - [ ] Do not expect overlay files to live in this Packagist package
 - [ ] Do not compile themes/assets on the VPS
-- [ ] Do not add a second Dockerfile for GitLab vs GitHub or for managed hosts
+- [ ] Do not add a second Dockerfile for GitLab vs GitHub or for managed hosts (always `docker/Dockerfile`)
+- [ ] Do not skip `shopware/docker` or build from a shop-root `Dockerfile`
 - [ ] Do not rsync `vendor/` or skip `shopware-deployment-helper`
