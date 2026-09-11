@@ -1,18 +1,51 @@
-# shopware-cd-template
+# fyrst/shopware-cd
 
 Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
-This repository is **not** a Shopware installation. It does not vendor Shopware core and must not be bootstrapped with `composer create-project`. Teams copy or merge these files into a shop **after** `shopware-cli project create`.
+This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package is a thin library; **Symfony Flex** copies the shop files (same pattern as [`shopware/docker`](https://github.com/shopware/docker)).
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
 **Build once, run everywhere.** The image is identical for every target. Only the last mile forks: Docker Compose on a VPS (primary) vs a managed container host (optional).
 
+There is **no** git submodule, **no** custom `fyrst-shopware-cd` CLI, and **no** Composer plugin that copies files.
+
+## Primary path (only)
+
+```bash
+shopware-cli project create <shop-name>
+# or: npx @shopware-ag/shopware-cli project create <shop-name>
+# optional version pin: shopware-cli project create <shop-name> 6.6.x.x
+cd <shop-name>
+composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd
+```
+
+Run Composer **inside Docker** when the web container is up (`docker compose exec web composer …`). Host PHP is often under-provisioned.
+
+Flex then:
+
+- `shopware/docker` → official `docker/Dockerfile` (prefer this; keep this recipe’s root `Dockerfile` as fallback; set CI `DOCKERFILE=docker/Dockerfile`)
+- `shopware/deployment-helper` → install/update at deploy time
+- `fyrst/shopware-cd` → dual CI, Compose, `deploy/`, `.shopware-project.yml`, `.env.example`, `.dockerignore`
+
+Wizard defaults for fyrst: current stable Shopware, **Docker = yes**.
+
+Commit the files Flex copied. `vendor/` is gitignored; CI and the VPS checkout need those paths in git.
+
+Refresh after a recipe update:
+
+```bash
+composer recipes:update fyrst/shopware-cd
+```
+
+If a file already exists, Flex skips or prompts (it does not overwrite `.env`). Shop-specific Compose tweaks belong in `compose.override.yaml`.
+
 ## Locked standard (do not fork locally)
 
 | Topic | Decision |
 | --- | --- |
-| Create | `npx @shopware-ag/shopware-cli project create <shop>` (or `shopware-cli`) |
+| Create | `shopware-cli project create` / `npx @shopware-ag/shopware-cli` |
+| Overlay | `composer require … fyrst/shopware-cd` + Symfony Flex recipe |
 | Local | Docker via `shopware-cli project dev` |
 | Runtime | App **always** runs in Docker (`shopware/docker` / `ghcr.io/shopware/docker-base`) |
 | Build | `shopware-cli project ci` inside a multi-stage Dockerfile |
@@ -21,52 +54,9 @@ Process (locked standard): [Shopware Create & Continuous Deploy](https://app.cli
 | Optional deploy | Managed container host (same image; only the deploy job differs) |
 | Deploy-time tasks | `vendor/bin/shopware-deployment-helper run --skip-theme-compile --skip-assets-install` |
 
-Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, compiling assets on the production host.
+Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, compiling assets on the production host, git submodules, custom create wrappers.
 
-## Adopt this template on a new shop
-
-### 1. Create the shop
-
-```bash
-npx @shopware-ag/shopware-cli project create <shop-name>
-# or: shopware-cli project create <shop-name>
-# optional version pin: shopware-cli project create <shop-name> 6.6.x.x
-cd <shop-name>
-```
-
-Wizard defaults for fyrst: current stable Shopware, **Docker = yes**. Advanced CI templates from the CLI are optional; still merge the dual-CI files from this overlay.
-
-### 2. Require Docker + deployment helper
-
-Run Composer **inside Docker** (host PHP is usually under-provisioned):
-
-```bash
-# after shopware-cli project dev has started, or:
-docker compose exec web composer require shopware/docker shopware/deployment-helper
-```
-
-- `shopware/docker` — Symfony Flex recipe that installs/updates the official multi-stage Dockerfile (typically `docker/Dockerfile`). **Prefer that file** and keep this overlay’s root `Dockerfile` as reference/fallback.
-- `shopware/deployment-helper` — install/update/extensions at deploy time.
-
-### 3. Copy / merge these overlay files
-
-Copy from this repository into the shop, or merge if the CLI already generated a file (`compose.yaml`, `.shopware-project.yml`):
-
-| Overlay file | What to do |
-| --- | --- |
-| `Dockerfile` | Use as fallback if you are **not** using the Flex recipe. If Flex wrote `docker/Dockerfile`, point CI at that path (`DOCKERFILE=docker/Dockerfile`) and do **not** maintain two Dockerfiles. |
-| `.dockerignore` | Merge; keep Shopware sources, exclude `.git` / `.env` / `vendor` / `node_modules`. |
-| `.shopware-project.yml` | Merge with the generated file. Keep `compatibility_date`, browserslist, hooks. |
-| `compose.yaml` / `compose.prod.yaml` | Merge local CLI compose with this production-oriented stack. Put shop-specific local tweaks in `compose.override.yaml` (gitignored if it contains secrets). |
-| `.github/workflows/cd.yml` | GitHub CD. |
-| `.gitlab-ci.yml` | GitLab CD (same stages). |
-| `deploy/` | VPS release script + optional managed-host notes. |
-| `.env.example` | Copy to `.env` / VPS `.env` and fill values. **Never commit secrets.** |
-| `.gitignore` | Merge with the shop’s gitignore. |
-
-See [CREATE.md](CREATE.md) for a short checklist.
-
-### 4. Set secrets and hosts (CI + runtime)
+## Secrets and hosts (CI + runtime)
 
 **Build-time (CI variables / GitHub secrets — never in git):**
 
@@ -95,17 +85,17 @@ See [CREATE.md](CREATE.md) for a short checklist.
 | `VPS_HOST` / `VPS_USER` / `VPS_PATH` | SSH target and checkout path |
 | `SSH_KNOWN_HOSTS` | Recommended instead of blindly accepting host keys |
 
-Placeholders and TODOs live in `.github/workflows/cd.yml`, `.gitlab-ci.yml`, and `.env.example`. No real hostnames belong in this overlay.
+Placeholders live in the copied `.github/workflows/cd.yml`, `.gitlab-ci.yml`, and `.env.example`. Copy `.env.example` → `.env` yourself.
 
-### 5. Run CD
+## CD pipeline
 
-Push to GitHub and/or GitLab on `main` (or a `v*` tag). The pipeline:
+Push to GitHub and/or GitLab on `main` (or a `v*` tag):
 
 1. **Build** — `docker buildx` with BuildKit secrets; `shopware-cli project ci` inside the `shopware-cli` image.
 2. **Push** — `:git-sha` always; `:latest` on default branch; `:semver` on version tags.
 3. **Deploy** — primary: SSH to the VPS, pull image, Compose up, one-shot setup. Optional: managed host when `DEPLOY_TARGET=managed`.
 
-Local day-to-day remains:
+Local day-to-day:
 
 ```bash
 shopware-cli project dev
@@ -125,8 +115,8 @@ shopware-cli project dev
    + setup one-shot                             (platform API / their registry)
 ```
 
-- **Primary (Compose / VPS):** the shop’s runtime is Docker Compose. CI does not compile themes on the server. See [deploy/README.md](deploy/README.md).
-- **Optional (managed host):** still the same Dockerfile and tags. Swap only the **deploy** job (and optionally push to the host’s registry). See [deploy/managed/README.md](deploy/managed/README.md). Gate with `DEPLOY_TARGET=managed`.
+- **Primary (Compose / VPS):** `deploy/README.md` after Flex copies it.
+- **Optional (managed host):** `deploy/managed/README.md`. Gate with `DEPLOY_TARGET=managed`.
 
 Do **not** maintain a second Dockerfile per target or per CI system.
 
@@ -140,26 +130,89 @@ Do **not** maintain a second Dockerfile per target or per CI system.
 
 PHP is pinned to **8.3** via `PHP_VERSION` in the Dockerfile / Compose build args.
 
-## CI stages (identical on GitHub and GitLab)
+## How the Flex recipe is registered
 
-1. Checkout
-2. **Build** image (`docker buildx`, secrets `packages_token` / `composer_auth`)
-3. **Push** extra tags (`:latest`, semver)
-4. **Deploy** (Compose SSH **or** managed, via `DEPLOY_TARGET`)
+Shopware projects already enable contrib recipes (`extra.symfony.allow-contrib: true`) and typically include `flex://defaults` (official recipes **and** [symfony/recipes-contrib](https://github.com/symfony/recipes-contrib)).
 
-`shopware-cli` is used **inside** the Dockerfile build stage, not as a separate runner install.
+Until the recipe is on contrib **and** this package is on Packagist, `composer require fyrst/shopware-cd` will install an empty library and Flex will not copy files. Remaining publisher steps:
 
-Production deploy is limited to the default branch and version tags. Other branches / MRs may build (and optionally push a SHA tag) but do not deploy.
+### 1. Packagist
 
-The workflow files no-op on this overlay repo itself (no `composer.json`). They are meant to run in a real shop.
+1. Tag a release (`1.0.0`) on [fyrst-dev/shopware-cd-template](https://github.com/fyrst-dev/shopware-cd-template).
+2. Submit the public GitHub repo at [packagist.org/packages/submit](https://packagist.org/packages/submit) as `fyrst/shopware-cd`.
+3. Enable GitHub Service Hook / Packagist auto-update.
 
-## Compose layout
+### 2. recipes-contrib PR (preferred, near-native)
 
-- [`compose.yaml`](compose.yaml) — shared services: `web`, bundled `mysql` (or document an external DSN and remove the service), optional `redis` profile, `setup` one-shot profile, optional `worker` / `scheduler` profiles.
-- [`compose.prod.yaml`](compose.prod.yaml) — VPS/prod overrides (restart, resources, extra env file).
-- [`deploy/compose.vps.yaml`](deploy/compose.vps.yaml) — pull policy / no rebuild on the VPS.
+The recipe in this repo is already in contrib layout:
 
-Release command on the VPS (also invoked from CI): [`deploy/vps-release.sh`](deploy/vps-release.sh).
+```
+flex-recipe/fyrst/shopware-cd/1.0/
+  manifest.json
+  post-install.txt
+  root/          # copy-from-recipe → shop project root
+```
+
+Checklist:
+
+1. Fork [symfony/recipes-contrib](https://github.com/symfony/recipes-contrib).
+2. Copy this tree into the fork at **`fyrst/shopware-cd/`** (same files as under `flex-recipe/fyrst/shopware-cd/`).
+3. Open a PR whose title does **not** contain `WIP`.
+4. Wait for Symfony Bot validation (no errors).
+5. Get a review approval from someone who is not the PR author.
+6. A Symfony Core Merger (or contrib auto-merge rules) merges it.
+7. Wait for the `flex/main` index sync on recipes-contrib.
+8. Shops: `composer require fyrst/shopware-cd` — Flex copies files.
+
+See [recipes-contrib contributing](https://github.com/symfony/recipes-contrib) and [Creating recipes](https://github.com/symfony/recipes#creating-recipes).
+
+### 3. Optional: `fyrst-dev/recipes` while waiting for contrib
+
+Same layout as Shopware’s [`shopware/recipes`](https://github.com/shopware/recipes) (vendor folders at repo root, not nested under `flex-recipe/`). Copy `flex-recipe/fyrst/` to `fyrst/` in that repo and add Symfony’s flex compiler workflow:
+
+```yaml
+# .github/workflows/flex-update.yml
+name: Update Flex endpoint
+on:
+  push:
+    branches: [main]
+jobs:
+  call-flex-update:
+    uses: symfony/recipes/.github/workflows/callable-flex-update.yml@main
+    permissions:
+      contents: write
+    with:
+      branch: main
+      contrib: true
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Then prepend the compiled index **before** Shopware / defaults (Shopware shops already set `extra.symfony.endpoint`):
+
+```bash
+composer config extra.symfony.allow-contrib true
+# keep shopware/recipes + flex://defaults; prepend fyrst
+```
+
+Example `extra.symfony.endpoint` list:
+
+```json
+[
+  "https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json",
+  "https://raw.githubusercontent.com/shopware/recipes/flex/main/index.json",
+  "flex://defaults"
+]
+```
+
+Remove the fyrst endpoint after recipes-contrib has synced.
+
+## Compose layout (after Flex)
+
+- `compose.yaml` — shared services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles
+- `compose.prod.yaml` — VPS/prod overrides
+- `deploy/compose.vps.yaml` — pull policy / no rebuild on the VPS
+- `deploy/vps-release.sh` — release command on the VPS (also invoked from CI)
 
 Setup always:
 
@@ -169,35 +222,38 @@ vendor/bin/shopware-deployment-helper run \
   --skip-assets-install
 ```
 
-Themes and assets were already produced by `shopware-cli project ci` in the image. Rebuilding them on the VPS wastes time and drifts from the artifact.
-
 ## File tree
 
 ```
 .
 ├── README.md
 ├── CREATE.md
-├── Dockerfile                 # reference / fallback (prefer Flex docker/Dockerfile)
-├── .dockerignore
-├── .shopware-project.yml
-├── compose.yaml
-├── compose.prod.yaml
-├── .env.example
-├── .gitignore
-├── .github/workflows/cd.yml
-├── .gitlab-ci.yml
-└── deploy/
-    ├── README.md              # primary: Compose / VPS
-    ├── compose.vps.yaml
-    ├── vps-release.sh
-    └── managed/
-        └── README.md          # optional: managed container host
+├── LICENSE
+├── composer.json                  # Packagist: fyrst/shopware-cd (library, not a plugin)
+└── flex-recipe/fyrst/shopware-cd/1.0/
+    ├── manifest.json
+    ├── post-install.txt
+    └── root/                      # files Flex copies into the shop
+        ├── Dockerfile             # fallback; prefer Flex docker/Dockerfile
+        ├── .dockerignore
+        ├── .shopware-project.yml
+        ├── compose.yaml
+        ├── compose.prod.yaml
+        ├── .env.example
+        ├── .gitignore
+        ├── .github/workflows/cd.yml
+        ├── .gitlab-ci.yml
+        └── deploy/
 ```
+
+This package’s GitHub workflow is package tests only (`.github/workflows/ci.yml`). Shop CD YAML lives in the recipe `root/` so it is not run here.
 
 ## Anti-patterns
 
 - Compiling assets or themes on the VPS after the image is built
 - Different Dockerfiles per CI system or per deploy target
 - Manual FTP/rsync of `vendor/`
-- Skipping the Deployment Helper and inventing per-shop install scripts
+- Git submodules for this overlay
+- Custom `create` / `apply` CLIs or Composer plugins that copy files
+- Skipping the Deployment Helper
 - Committing `.env`, `auth.json`, or real hostnames
