@@ -6,7 +6,7 @@ Use with the locked process: [Shopware Create & Continuous Deploy](https://app.c
 
 This package (`fyrst/shopware-cd`) is a thin Packagist library. It does **not** contain overlay files; Flex loads them from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes). There is **no** Composer dependency on that recipes repo.
 
-`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yaml`, and local Docker. The fyrst Flex recipe does **not** copy those. Flex copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/sync-runtime.sh`).
+`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yaml`, and local Docker. The fyrst Flex recipe does **not** copy those. Flex copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/sync-runtime.sh` for VPS and `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`).
 
 Shops **must** `composer require shopware/docker` on the same line as `fyrst/shopware-cd`. The image build file is always `docker/Dockerfile`.
 
@@ -31,11 +31,12 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] `extra.symfony.endpoint` is **fyrst-dev/recipes**, then shopware/recipes, then `flex://defaults` — set **before** `composer require`
 - [ ] Flex dropped `docker/Dockerfile` from `shopware/docker` (required; same `composer require` as `fyrst/shopware-cd`)
 - [ ] CI `DOCKERFILE=docker/Dockerfile` (or default to that). Do not add a shop-root `Dockerfile`.
-- [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh`)
+- [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh`)
 - [ ] VPS deploy uses `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`, not the CLI-managed root `compose.yaml`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] `.env` was **not** written by Flex; copy `.env.example` → `.env` yourself
-- [ ] Runtime DB + media/files stay **out of git** and **out of the image** (Docker named volumes on the VPS). Env copy is `deploy/sync-runtime.sh` (SSH + dump + volume archives). **No S3.**
+- [ ] Runtime DB + media/files stay **out of git** and **out of the image**. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data`. VPS env copy is `deploy/sync-runtime.sh` (SSH + dump + rsync of those host dirs). **No S3.** Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`) — **not** `deploy/sync-runtime.sh`.
+- [ ] VPS: `mkdir -p /var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}` and `chown` to uid 82 (www-data in docker-base)
 
 If Flex did not copy files, the shop is missing the [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes) endpoint. See [README.md](README.md). Refresh later with `composer recipes:update fyrst/shopware-cd`.
 
@@ -51,10 +52,12 @@ Fill placeholders — never commit values.
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
 - [ ] Runtime: `APP_URL`, `APP_SECRET`, `DATABASE_URL`
+- [ ] Runtime: `SHOPWARE_DATA_ROOT` if not using the default `/var/lib/shopware/data`
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
 - [ ] Optional: `DEPLOY_TARGET=managed` plus host-specific vars (see `deploy/managed/README.md` after Flex)
 - [ ] Optional: `COMPOSE_PROFILES=redis,worker,scheduler` on the VPS if you use those services
 - [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env). Never commit filled `deploy/sync.env`. Never auto-push into live.
+- [ ] Optional: on a laptop, pull live media/files into `shopware-cli project dev` with `bash deploy/sync-runtime-local.sh --from live --data all` (rsync remaps `$SHOPWARE_DATA_ROOT` → `files/` and `public/{media,thumbnail,theme,sitemap}`). Do **not** use `deploy/sync-runtime.sh` locally.
 
 ## First pipeline
 
@@ -62,7 +65,7 @@ Fill placeholders — never commit values.
 - [ ] Build → push `:sha` (+ `:latest` on `main`) succeeds
 - [ ] Deploy job SSHs to the VPS, pulls, Compose up, one-shot setup
 - [ ] Storefront + admin + health/smoke URL verified
-- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on Docker volumes; live → staging/playground/dev uses `deploy/sync-runtime.sh`.
+- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `SHOPWARE_DATA_ROOT`; live → staging/playground/dev uses `deploy/sync-runtime.sh`. Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh`.
 
 ## Anti-patterns (do not)
 
@@ -76,5 +79,6 @@ Fill placeholders — never commit values.
 - [ ] Do not skip `shopware/docker` or build from a shop-root `Dockerfile`
 - [ ] Do not rsync `vendor/` or skip `shopware-deployment-helper`
 - [ ] Do not put media, uploads, or DB dumps in git or the image
-- [ ] Do not use S3 as the default VPS env-to-env copy (SSH + dump + volume archives via `deploy/sync-runtime.sh`)
+- [ ] Do not use S3 as the default VPS env-to-env copy (SSH + dump + rsync of those host dirs via `deploy/sync-runtime.sh`)
+- [ ] Do not run `deploy/sync-runtime.sh` against local `shopware-cli project dev` (VPS only; local remap is `deploy/sync-runtime-local.sh`)
 - [ ] Do not cron a push into live (the consumer pulls from live)

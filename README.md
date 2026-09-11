@@ -4,7 +4,7 @@ Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
 This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library only**.
 
-This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/sync-runtime.sh`) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (and local Docker via the CLI). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
+This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/sync-runtime.sh` for VPS and `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (and local Docker via the CLI). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
@@ -57,7 +57,7 @@ Flex then:
 
 - `shopware/docker` → **required**. Flex copies official `docker/Dockerfile`. Image builds **always** use that file. CI `DOCKERFILE=docker/Dockerfile` (or default to that). The fyrst recipe does **not** ship a shop-root `Dockerfile`.
 - `shopware/deployment-helper` → install/update at deploy time
-- `fyrst/shopware-cd` → `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` including `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh` (from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package). Does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml`.
+- `fyrst/shopware-cd` → `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` including `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh` (VPS), and `deploy/sync-runtime-local.sh` (local `shopware-cli project dev`) — from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package. Does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml`.
 
 Wizard defaults for fyrst: current stable Shopware, **Docker = yes**.
 
@@ -89,14 +89,14 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Create | `shopware-cli project create` / `npx @shopware-ag/shopware-cli` |
 | CLI-owned files | `compose.yaml`, `.gitignore`, `.shopware-project.yaml` (and local Docker via CLI). Flex does **not** copy these. |
 | Overlay | `extra.symfony.endpoint` (fyrst-dev/recipes first) then `composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd` + Symfony Flex |
-| Overlay files | CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh`) |
-| Local | Docker via `shopware-cli project dev` (CLI-managed root `compose.yaml`) |
+| Overlay files | CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh`) |
+| Local | Docker via `shopware-cli project dev` (CLI-managed root `compose.yaml`). Live media/files: `deploy/sync-runtime-local.sh` (rsync path remap into the project tree — not `deploy/sync-runtime.sh`) |
 | Runtime | App **always** runs in Docker (`shopware/docker` / `ghcr.io/shopware/docker-base`) |
 | Image | Always `docker/Dockerfile` from required `shopware/docker`. CI `DOCKERFILE=docker/Dockerfile` (or default to that). |
 | Build | `shopware-cli project ci` inside that multi-stage `docker/Dockerfile` |
 | CI | GitHub Actions **and** GitLab CI, same stages |
 | Primary deploy | Docker Compose on a VPS using `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml` (not root `compose.yaml`) |
-| Runtime data | Out of git and out of the image. VPS Docker volumes. `deploy/sync-runtime.sh` live → staging/playground/dev (SSH + dump + volume archives; **no S3**; cron on the consumer) |
+| Runtime data | Out of git and out of the image. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data`. VPS: `deploy/sync-runtime.sh` live → staging/playground/dev (SSH + dump + rsync of those host dirs; **no S3**; cron on the consumer). Local `shopware-cli project dev`: `deploy/sync-runtime-local.sh` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`) |
 | Optional deploy | Managed container host (same image; only the deploy job differs) |
 | Deploy-time tasks | `vendor/bin/shopware-deployment-helper run --skip-theme-compile --skip-assets-install` |
 
@@ -121,6 +121,7 @@ Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, co
 | `APP_URL` / `SALES_CHANNEL_URL` | Public shop URL |
 | `APP_SECRET` | Persistent secret (`openssl rand -hex 32`) |
 | `DATABASE_URL` | MySQL/MariaDB DSN |
+| `SHOPWARE_DATA_ROOT` | Host root for VPS bind mounts (default `/var/lib/shopware/data`) |
 | `INSTALL_ADMIN_*` | First-install admin user only |
 | Store / app licence vars | Only if you ship licensed apps |
 
@@ -155,6 +156,8 @@ Local day-to-day:
 ```bash
 shopware-cli project dev
 ```
+
+To pull live media/files into that checkout, use `deploy/sync-runtime-local.sh` (rsync path remap). Do **not** run `deploy/sync-runtime.sh` on a laptop — that script is VPS-only.
 
 ## Primary vs optional deploy
 
@@ -204,11 +207,12 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 
 **CD / VPS (Flex-copied under `deploy/`):**
 
-- `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles; named volumes for runtime media/files
+- `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles; **bind mounts** under `SHOPWARE_DATA_ROOT` for runtime media/files (named volumes only `mysql_data` / `redis_data`)
 - `deploy/compose.prod.yaml` — VPS/prod overrides
 - `deploy/compose.vps.yaml` — pull policy / no rebuild on the VPS
 - `deploy/vps-release.sh` — release command on the VPS (also invoked from CI)
-- `deploy/sync-runtime.sh` — live → staging/playground/dev copy of DB + runtime volumes (SSH + dump + archives; **no S3**)
+- `deploy/sync-runtime.sh` — VPS only: live → staging/playground/dev copy of DB + `SHOPWARE_DATA_ROOT` host dirs (SSH + dump + rsync; **no S3**)
+- `deploy/sync-runtime-local.sh` — laptop only: live media/files into `shopware-cli project dev` (rsync path remap; **not** `deploy/sync-runtime.sh`)
 
 The VPS uses those deploy Compose files. It does **not** use the CLI-managed root `compose.yaml`.
 
@@ -222,11 +226,18 @@ vendor/bin/shopware-deployment-helper run \
 
 ## Runtime data sync (VPS, no S3)
 
-DB, media, documents, thumbnails, and related uploads stay **out of git** and **out of the image**. `.dockerignore` excludes those paths. On the VPS they live in Docker named volumes (`files`, `media`, `thumbnail`, `theme`, `sitemap`) plus the database (`mysql_data` or DBaaS). A new image pull keeps the same volumes.
+DB, media, documents, thumbnails, and related uploads stay **out of git** and **out of the image**. `.dockerignore` excludes those paths. On the VPS they live in **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`) plus the database (`mysql_data` named volume or DBaaS). Named Docker volumes remain only for `mysql_data` / `redis_data` — not for those media/files paths. A new image pull keeps the same host directories mounted.
 
-**No S3.** Copying live → staging / playground / dev is SSH + `mysqldump` (or Compose exec on bundled MySQL) + volume archives, not object storage.
+One-time on each VPS:
 
-Flex copies **`deploy/sync-runtime.sh`**. Run it **on the consumer** (cron on staging/playground/dev). Pull from live; never auto-push into live.
+```bash
+sudo mkdir -p /var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}
+sudo chown -R 82:82 /var/lib/shopware/data
+```
+
+**No S3.** Copying live → staging / playground / dev is SSH + `mysqldump` (or Compose exec on bundled MySQL) + rsync of those host dirs, not object storage.
+
+Flex copies **`deploy/sync-runtime.sh`**. It rsyncs those host dirs. Run it **on the consumer** (cron on staging/playground/dev). Pull from live; never auto-push into live. This script is **not** for local `shopware-cli project dev`.
 
 ```bash
 # on staging / playground / dev
@@ -240,6 +251,31 @@ bash deploy/sync-runtime.sh sync --from live --data all
 ```
 
 See `deploy/README.md` after Flex. Overlay copies live in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package.
+
+## Runtime files into local `shopware-cli project dev`
+
+Local and VPS use **different paths**. `shopware-cli project dev` bind-mounts the **project tree**, not `SHOPWARE_DATA_ROOT`. Do **not** run `deploy/sync-runtime.sh` on a laptop.
+
+Flex copies **`deploy/sync-runtime-local.sh`**. From the shop root it rsyncs live bind-mount trees into local project paths (rsync path remap):
+
+| Live (`SHOPWARE_DATA_ROOT`, default `/var/lib/shopware/data`) | Local project |
+| --- | --- |
+| `.../files` | `files/` |
+| `.../media` | `public/media/` |
+| `.../thumbnail` | `public/thumbnail/` |
+| `.../theme` | `public/theme/` |
+| `.../sitemap` | `public/sitemap/` |
+
+```bash
+cd /path/to/your-shop
+bash deploy/sync-runtime-local.sh --from live --data all
+# optional: --delete  --dry-run
+shopware-cli project console cache:clear
+```
+
+Needs SSH to live (for example `Host live` in `~/.ssh/config`) and `rsync` on the laptop. These dirs stay **gitignored** — never commit them.
+
+Pulling media/files does **not** copy the database. For a full content match, dump live into the local CLI DB separately, then rewrite sales-channel URLs for `http://127.0.0.1:8000`. Do not point local at the live database.
 
 ## File tree (this package)
 
@@ -272,6 +308,7 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Editing overlay files in this repo (they are not here; change [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes))
 - Skipping the Deployment Helper
 - Committing `.env`, `auth.json`, `deploy/sync.env`, or real hostnames
-- Baking media, uploads, or DB dumps into git or the image (they stay on VPS volumes)
-- Using S3/MinIO as the default way to copy live data to staging (use `deploy/sync-runtime.sh`: SSH + dump + volume archives)
+- Baking media, uploads, or DB dumps into git or the image (they stay on VPS bind mounts under `SHOPWARE_DATA_ROOT`, or in the local project tree)
+- Using S3/MinIO as the default way to copy live data to staging (use `deploy/sync-runtime.sh`: SSH + dump + rsync of those host dirs)
+- Running `deploy/sync-runtime.sh` against local `shopware-cli project dev` (that script is VPS `SHOPWARE_DATA_ROOT`; use `deploy/sync-runtime-local.sh`)
 - Cron that pushes into live (the consumer pulls from live)
