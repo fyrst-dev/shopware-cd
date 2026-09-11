@@ -35,7 +35,8 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] VPS deploy uses `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`, not the CLI-managed root `compose.yaml`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] `.env` was **not** written by Flex; copy `.env.example` → `.env` yourself
-- [ ] Runtime DB + media/files stay **out of git** and **out of the image** (Docker named volumes on the VPS). Env copy is `deploy/sync-runtime.sh` (SSH + dump + volume archives). **No S3.**
+- [ ] Runtime DB + media/files stay **out of git** and **out of the image**. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data`. Env copy is `deploy/sync-runtime.sh` (SSH + dump + rsync of those host dirs). **No S3.**
+- [ ] VPS: `mkdir -p /var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}` and `chown` to uid 82 (www-data in docker-base)
 
 If Flex did not copy files, the shop is missing the [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes) endpoint. See [README.md](README.md). Refresh later with `composer recipes:update fyrst/shopware-cd`.
 
@@ -51,6 +52,7 @@ Fill placeholders — never commit values.
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
 - [ ] Runtime: `APP_URL`, `APP_SECRET`, `DATABASE_URL`
+- [ ] Runtime: `SHOPWARE_DATA_ROOT` if not using the default `/var/lib/shopware/data`
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
 - [ ] Optional: `DEPLOY_TARGET=managed` plus host-specific vars (see `deploy/managed/README.md` after Flex)
 - [ ] Optional: `COMPOSE_PROFILES=redis,worker,scheduler` on the VPS if you use those services
@@ -62,7 +64,7 @@ Fill placeholders — never commit values.
 - [ ] Build → push `:sha` (+ `:latest` on `main`) succeeds
 - [ ] Deploy job SSHs to the VPS, pulls, Compose up, one-shot setup
 - [ ] Storefront + admin + health/smoke URL verified
-- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on Docker volumes; live → staging/playground/dev uses `deploy/sync-runtime.sh`.
+- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `SHOPWARE_DATA_ROOT`; live → staging/playground/dev uses `deploy/sync-runtime.sh`.
 
 ## Anti-patterns (do not)
 
@@ -76,5 +78,5 @@ Fill placeholders — never commit values.
 - [ ] Do not skip `shopware/docker` or build from a shop-root `Dockerfile`
 - [ ] Do not rsync `vendor/` or skip `shopware-deployment-helper`
 - [ ] Do not put media, uploads, or DB dumps in git or the image
-- [ ] Do not use S3 as the default VPS env-to-env copy (SSH + dump + volume archives via `deploy/sync-runtime.sh`)
+- [ ] Do not use S3 as the default VPS env-to-env copy (SSH + dump + rsync of those host dirs via `deploy/sync-runtime.sh`)
 - [ ] Do not cron a push into live (the consumer pulls from live)
