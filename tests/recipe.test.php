@@ -41,6 +41,8 @@ fyrst_assert(is_file($manifestFile), 'manifest.json exists');
 $manifest = json_decode((string) file_get_contents($manifestFile), true);
 fyrst_assert(is_array($manifest), 'manifest.json is JSON');
 fyrst_assert(($manifest['copy-from-recipe']['root/'] ?? null) === '', 'copy-from-recipe maps root/ to shop project root');
+fyrst_assert(!isset($manifest['aliases']), 'contrib recipes do not support aliases');
+fyrst_assert(array_keys($manifest) === ['copy-from-recipe'], 'manifest.json only has copy-from-recipe');
 fyrst_assert(is_file($recipe . '/post-install.txt'), 'post-install.txt exists');
 
 $expected = [
