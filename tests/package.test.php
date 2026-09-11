@@ -166,6 +166,30 @@ fyrst_assert(
     'README names deploy/compose.vps.yaml'
 );
 fyrst_assert(
+    str_contains($readme, 'deploy/sync-runtime.sh'),
+    'README names deploy/sync-runtime.sh as Flex overlay'
+);
+fyrst_assert(
+    str_contains($readme, '**No S3.**'),
+    'README states VPS runtime sync does not use S3'
+);
+fyrst_assert(
+    str_contains($readme, 'SSH + `mysqldump`'),
+    'README states runtime sync is SSH + dump + volume archives'
+);
+fyrst_assert(
+    str_contains($readme, 'live → staging / playground / dev'),
+    'README states sync direction live → staging/playground/dev'
+);
+fyrst_assert(
+    str_contains($readme, 'on the consumer'),
+    'README states cron/script runs on the consumer'
+);
+fyrst_assert(
+    str_contains($readme, '**out of git** and **out of the image**'),
+    'README states runtime DB/volumes stay out of git and the image'
+);
+fyrst_assert(
     str_contains($readme, 'does **not** use the CLI-managed root `compose.yaml`'),
     'README states VPS does not use the CLI-managed root compose.yaml'
 );
@@ -185,6 +209,30 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'deploy/compose.yaml'),
     'CREATE.md names deploy/compose.yaml'
+);
+fyrst_assert(
+    str_contains($create, 'deploy/sync-runtime.sh'),
+    'CREATE.md names deploy/sync-runtime.sh as Flex overlay'
+);
+fyrst_assert(
+    str_contains($create, '**No S3.**'),
+    'CREATE.md states VPS runtime sync does not use S3'
+);
+fyrst_assert(
+    str_contains($create, 'SSH + dump + volume archives'),
+    'CREATE.md states runtime sync is SSH + dump + volume archives'
+);
+fyrst_assert(
+    str_contains($create, 'live → staging/playground/dev'),
+    'CREATE.md states sync direction live → staging/playground/dev'
+);
+fyrst_assert(
+    str_contains($create, 'on the consumer'),
+    'CREATE.md states cron runs on the consumer'
+);
+fyrst_assert(
+    str_contains($create, '**out of git** and **out of the image**'),
+    'CREATE.md states runtime DB/volumes stay out of git and the image'
 );
 fyrst_assert(
     str_contains($create, 'not the CLI-managed root `compose.yaml`'),
