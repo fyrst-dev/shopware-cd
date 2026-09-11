@@ -96,7 +96,7 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Build | `shopware-cli project ci` inside that multi-stage `docker/Dockerfile` |
 | CI | GitHub Actions **and** GitLab CI, same stages |
 | Primary deploy | Docker Compose on a VPS using `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml` (not root `compose.yaml`) |
-| Runtime data | Out of git and out of the image. VPS Docker volumes. `deploy/sync-runtime.sh` live → staging/playground/dev (SSH + dump + volume archives; **no S3**; cron on the consumer) |
+| Runtime data | Out of git and out of the image. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data`. `deploy/sync-runtime.sh` live → staging/playground/dev (SSH + dump + rsync of those host dirs; **no S3**; cron on the consumer) |
 | Optional deploy | Managed container host (same image; only the deploy job differs) |
 | Deploy-time tasks | `vendor/bin/shopware-deployment-helper run --skip-theme-compile --skip-assets-install` |
 
@@ -121,6 +121,7 @@ Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, co
 | `APP_URL` / `SALES_CHANNEL_URL` | Public shop URL |
 | `APP_SECRET` | Persistent secret (`openssl rand -hex 32`) |
 | `DATABASE_URL` | MySQL/MariaDB DSN |
+| `SHOPWARE_DATA_ROOT` | Host root for VPS bind mounts (default `/var/lib/shopware/data`) |
 | `INSTALL_ADMIN_*` | First-install admin user only |
 | Store / app licence vars | Only if you ship licensed apps |
 
@@ -204,11 +205,11 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 
 **CD / VPS (Flex-copied under `deploy/`):**
 
-- `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles; named volumes for runtime media/files
+- `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles; **bind mounts** under `SHOPWARE_DATA_ROOT` for runtime media/files (named volumes only `mysql_data` / `redis_data`)
 - `deploy/compose.prod.yaml` — VPS/prod overrides
 - `deploy/compose.vps.yaml` — pull policy / no rebuild on the VPS
 - `deploy/vps-release.sh` — release command on the VPS (also invoked from CI)
-- `deploy/sync-runtime.sh` — live → staging/playground/dev copy of DB + runtime volumes (SSH + dump + archives; **no S3**)
+- `deploy/sync-runtime.sh` — live → staging/playground/dev copy of DB + `SHOPWARE_DATA_ROOT` host dirs (SSH + dump + rsync; **no S3**)
 
 The VPS uses those deploy Compose files. It does **not** use the CLI-managed root `compose.yaml`.
 
@@ -222,11 +223,18 @@ vendor/bin/shopware-deployment-helper run \
 
 ## Runtime data sync (VPS, no S3)
 
-DB, media, documents, thumbnails, and related uploads stay **out of git** and **out of the image**. `.dockerignore` excludes those paths. On the VPS they live in Docker named volumes (`files`, `media`, `thumbnail`, `theme`, `sitemap`) plus the database (`mysql_data` or DBaaS). A new image pull keeps the same volumes.
+DB, media, documents, thumbnails, and related uploads stay **out of git** and **out of the image**. `.dockerignore` excludes those paths. On the VPS they live in **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`) plus the database (`mysql_data` named volume or DBaaS). Named Docker volumes remain only for `mysql_data` / `redis_data` — not for those media/files paths. A new image pull keeps the same host directories mounted.
 
-**No S3.** Copying live → staging / playground / dev is SSH + `mysqldump` (or Compose exec on bundled MySQL) + volume archives, not object storage.
+One-time on each VPS:
 
-Flex copies **`deploy/sync-runtime.sh`**. Run it **on the consumer** (cron on staging/playground/dev). Pull from live; never auto-push into live.
+```bash
+sudo mkdir -p /var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}
+sudo chown -R 82:82 /var/lib/shopware/data
+```
+
+**No S3.** Copying live → staging / playground / dev is SSH + `mysqldump` (or Compose exec on bundled MySQL) + rsync of those host dirs, not object storage.
+
+Flex copies **`deploy/sync-runtime.sh`**. It rsyncs those host dirs. Run it **on the consumer** (cron on staging/playground/dev). Pull from live; never auto-push into live.
 
 ```bash
 # on staging / playground / dev
@@ -272,6 +280,6 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Editing overlay files in this repo (they are not here; change [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes))
 - Skipping the Deployment Helper
 - Committing `.env`, `auth.json`, `deploy/sync.env`, or real hostnames
-- Baking media, uploads, or DB dumps into git or the image (they stay on VPS volumes)
-- Using S3/MinIO as the default way to copy live data to staging (use `deploy/sync-runtime.sh`: SSH + dump + volume archives)
+- Baking media, uploads, or DB dumps into git or the image (they stay on VPS bind mounts under `SHOPWARE_DATA_ROOT`)
+- Using S3/MinIO as the default way to copy live data to staging (use `deploy/sync-runtime.sh`: SSH + dump + rsync of those host dirs)
 - Cron that pushes into live (the consumer pulls from live)
