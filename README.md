@@ -16,7 +16,7 @@ There is **no** git submodule, **no** custom `fyrst-shopware-cd` CLI, **no** Com
 
 | Piece | Role |
 | --- | --- |
-| This repo ([`fyrst-dev/shopware-cd-template`](https://github.com/fyrst-dev/shopware-cd-template)) | Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd): thin library. **No** shop file copies. |
+| This repo ([`fyrst-dev/shopware-cd`](https://github.com/fyrst-dev/shopware-cd)) | Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd): thin library. **No** shop file copies. |
 | [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) | Owns and serves **all** overlay files at `fyrst/shopware-cd/1.0/`. Compiles [`flex/main/index.json`](https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json). **Source of truth** for what shops get via Flex. |
 
 Flex maps the Packagist package name `fyrst/shopware-cd` to a recipe **only** via the shop’s `extra.symfony.endpoint` list — not via a `require` of the recipes repo.
