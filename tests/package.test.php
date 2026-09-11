@@ -190,8 +190,45 @@ fyrst_assert(
     'README names SHOPWARE_DATA_ROOT for VPS bind mounts'
 );
 fyrst_assert(
-    str_contains($readme, '/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}'),
-    'README documents default SHOPWARE_DATA_ROOT bind-mount paths'
+    str_contains($readme, 'SHOPWARE_SHOP_ID'),
+    'README names SHOPWARE_SHOP_ID as the stable shop slug'
+);
+fyrst_assert(
+    str_contains($readme, 'SHOPWARE_DEPLOY_ENV'),
+    'README names SHOPWARE_DEPLOY_ENV'
+);
+fyrst_assert(
+    str_contains($readme, 'COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}'),
+    'README sets COMPOSE_PROJECT_NAME from shop id + deploy env'
+);
+fyrst_assert(
+    str_contains($readme, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}'),
+    'README documents default SHOPWARE_DATA_ROOT as shop/env-scoped'
+);
+fyrst_assert(
+    str_contains($readme, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}/{files,media,thumbnail,theme,sitemap}'),
+    'README documents default SHOPWARE_DATA_ROOT bind-mount paths under shop/env'
+);
+fyrst_assert(
+    str_contains($readme, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live'),
+    'README auto-derives sync-runtime-local remote path from SHOPWARE_SHOP_ID + live'
+);
+fyrst_assert(
+    str_contains($readme, 'paths from shop id + deploy env') || str_contains($readme, 'Paths use **shop id + deploy env**'),
+    'README states deploy/sync-runtime.sh uses shop id + deploy env'
+);
+fyrst_assert(
+    str_contains($readme, 'No hardcoded Compose project name `shopware`')
+        || str_contains($readme, 'Hardcoding Compose project name `shopware`'),
+    'README forbids hardcoded Compose project name shopware'
+);
+fyrst_assert(
+    !preg_match('#/var/lib/shopware/data/\{files#', $readme),
+    'README does not document a global /var/lib/shopware/data/{files,…} without shop/env'
+);
+fyrst_assert(
+    !preg_match('#COMPOSE_PROJECT_NAME=shopware(?!-)#', $readme),
+    'README does not set COMPOSE_PROJECT_NAME=shopware'
 );
 fyrst_assert(
     str_contains($readme, '**bind mounts**'),
@@ -283,8 +320,46 @@ fyrst_assert(
     'CREATE.md names SHOPWARE_DATA_ROOT for VPS bind mounts'
 );
 fyrst_assert(
-    str_contains($create, '/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}'),
-    'CREATE.md documents default SHOPWARE_DATA_ROOT bind-mount paths'
+    str_contains($create, 'SHOPWARE_SHOP_ID'),
+    'CREATE.md names SHOPWARE_SHOP_ID as the stable shop slug'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_DEPLOY_ENV'),
+    'CREATE.md names SHOPWARE_DEPLOY_ENV'
+);
+fyrst_assert(
+    str_contains($create, 'COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}'),
+    'CREATE.md sets COMPOSE_PROJECT_NAME from shop id + deploy env'
+);
+fyrst_assert(
+    str_contains($create, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}'),
+    'CREATE.md documents default SHOPWARE_DATA_ROOT as shop/env-scoped'
+);
+fyrst_assert(
+    str_contains($create, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}/{files,media,thumbnail,theme,sitemap}'),
+    'CREATE.md documents default SHOPWARE_DATA_ROOT bind-mount paths under shop/env'
+);
+fyrst_assert(
+    str_contains($create, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live'),
+    'CREATE.md auto-derives sync-runtime-local remote path from SHOPWARE_SHOP_ID + live'
+);
+fyrst_assert(
+    str_contains($create, 'paths from shop id + deploy env')
+        || str_contains($create, 'shop id + deploy env'),
+    'CREATE.md states deploy/sync-runtime.sh uses shop id + deploy env'
+);
+fyrst_assert(
+    str_contains($create, 'do not hardcode `shopware`')
+        || str_contains($create, 'Do not hardcode Compose project name `shopware`'),
+    'CREATE.md forbids hardcoded Compose project name shopware'
+);
+fyrst_assert(
+    !preg_match('#/var/lib/shopware/data/\{files#', $create),
+    'CREATE.md does not document a global /var/lib/shopware/data/{files,…} without shop/env'
+);
+fyrst_assert(
+    !preg_match('#COMPOSE_PROJECT_NAME=shopware(?!-)#', $create),
+    'CREATE.md does not set COMPOSE_PROJECT_NAME=shopware'
 );
 fyrst_assert(
     str_contains($create, '**bind mounts**'),
@@ -370,6 +445,43 @@ foreach ($docs as $name => $text) {
         !preg_match('/Flex (loads|copied|copies) CI, Compose/', $text),
         "{$name} does not say Flex copies Compose at shop root"
     );
+}
+
+foreach (['README.md' => $readme, 'CREATE.md' => $create] as $name => $text) {
+    fyrst_assert(
+        !preg_match('#mkdir -p /var/lib/shopware/data/\{#', $text),
+        "{$name} does not mkdir a global /var/lib/shopware/data/{{files,…}}"
+    );
+    fyrst_assert(
+        !preg_match('#chown -R 82:82 /var/lib/shopware/data\b#', $text),
+        "{$name} does not chown a global /var/lib/shopware/data"
+    );
+    fyrst_assert(
+        !preg_match('#default `/var/lib/shopware/data`(?!/)#', $text),
+        "{$name} does not default SHOPWARE_DATA_ROOT to /var/lib/shopware/data without shop/env"
+    );
+    fyrst_assert(
+        !preg_match('/^name:\s*shopware\s*$/m', $text),
+        "{$name} does not hardcode Compose name: shopware"
+    );
+
+    preg_match_all('#/var/lib/shopware/data(?:/[^\s`\'")]+)?#', $text, $dataRoots);
+    foreach ($dataRoots[0] as $path) {
+        $scoped = str_contains($path, '${SHOPWARE_SHOP_ID}')
+            || (bool) preg_match('#^/var/lib/shopware/data/[a-z0-9-]+/(live|staging|playground|dev)#', $path);
+        if ($scoped) {
+            continue;
+        }
+        fyrst_assert(
+            $path === '/var/lib/shopware/data'
+                && (
+                    str_contains($text, 'single global `/var/lib/shopware/data`')
+                    || str_contains($text, 'not a global `/var/lib/shopware/data`')
+                    || str_contains($text, 'global `/var/lib/shopware/data` without')
+                ),
+            "{$name} data path is shop/env-scoped (or an anti-pattern): {$path}"
+        );
+    }
 }
 
 if ($failures > 0) {
