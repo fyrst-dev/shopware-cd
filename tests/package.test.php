@@ -170,12 +170,44 @@ fyrst_assert(
     'README names deploy/sync-runtime.sh as Flex overlay'
 );
 fyrst_assert(
+    str_contains($readme, 'deploy/sync-runtime-local.sh'),
+    'README names deploy/sync-runtime-local.sh as Flex overlay'
+);
+fyrst_assert(
     str_contains($readme, '**No S3.**'),
     'README states VPS runtime sync does not use S3'
 );
 fyrst_assert(
     str_contains($readme, 'SSH + `mysqldump`'),
-    'README states runtime sync is SSH + dump + volume archives'
+    'README states runtime sync is SSH + dump'
+);
+fyrst_assert(
+    str_contains($readme, 'rsync of those host dirs'),
+    'README states deploy/sync-runtime.sh rsyncs SHOPWARE_DATA_ROOT host dirs'
+);
+fyrst_assert(
+    str_contains($readme, 'SHOPWARE_DATA_ROOT'),
+    'README names SHOPWARE_DATA_ROOT for VPS bind mounts'
+);
+fyrst_assert(
+    str_contains($readme, '/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}'),
+    'README documents default SHOPWARE_DATA_ROOT bind-mount paths'
+);
+fyrst_assert(
+    str_contains($readme, '**bind mounts**'),
+    'README states VPS runtime data uses bind mounts'
+);
+fyrst_assert(
+    str_contains($readme, 'Named Docker volumes remain only for `mysql_data` / `redis_data`'),
+    'README keeps named volumes only for mysql_data / redis_data'
+);
+fyrst_assert(
+    !str_contains($readme, 'volume archives'),
+    'README does not describe runtime sync as volume archives'
+);
+fyrst_assert(
+    !str_contains($readme, 'named volumes for runtime media/files'),
+    'README does not assign named volumes to runtime media/files'
 );
 fyrst_assert(
     str_contains($readme, 'live → staging / playground / dev'),
@@ -187,7 +219,27 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($readme, '**out of git** and **out of the image**'),
-    'README states runtime DB/volumes stay out of git and the image'
+    'README states runtime DB/bind-mount data stay out of git and the image'
+);
+fyrst_assert(
+    str_contains($readme, 'rsync path remap'),
+    'README states local sync uses rsync path remap'
+);
+fyrst_assert(
+    str_contains($readme, 'public/media/'),
+    'README remaps live media into local public/media/'
+);
+fyrst_assert(
+    str_contains($readme, 'shopware-cli project dev'),
+    'README names shopware-cli project dev as the local consumer'
+);
+fyrst_assert(
+    str_contains($readme, 'This script is **not** for local `shopware-cli project dev`'),
+    'README states deploy/sync-runtime.sh is not for local project dev'
+);
+fyrst_assert(
+    str_contains($readme, 'Do **not** run `deploy/sync-runtime.sh` on a laptop'),
+    'README forbids VPS sync script on a laptop'
 );
 fyrst_assert(
     str_contains($readme, 'does **not** use the CLI-managed root `compose.yaml`'),
@@ -215,12 +267,40 @@ fyrst_assert(
     'CREATE.md names deploy/sync-runtime.sh as Flex overlay'
 );
 fyrst_assert(
+    str_contains($create, 'deploy/sync-runtime-local.sh'),
+    'CREATE.md names deploy/sync-runtime-local.sh as Flex overlay'
+);
+fyrst_assert(
     str_contains($create, '**No S3.**'),
     'CREATE.md states VPS runtime sync does not use S3'
 );
 fyrst_assert(
-    str_contains($create, 'SSH + dump + volume archives'),
-    'CREATE.md states runtime sync is SSH + dump + volume archives'
+    str_contains($create, 'SSH + dump + rsync of those host dirs'),
+    'CREATE.md states runtime sync is SSH + dump + rsync of host dirs'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_DATA_ROOT'),
+    'CREATE.md names SHOPWARE_DATA_ROOT for VPS bind mounts'
+);
+fyrst_assert(
+    str_contains($create, '/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}'),
+    'CREATE.md documents default SHOPWARE_DATA_ROOT bind-mount paths'
+);
+fyrst_assert(
+    str_contains($create, '**bind mounts**'),
+    'CREATE.md states VPS runtime data uses bind mounts'
+);
+fyrst_assert(
+    str_contains($create, 'Named volumes remain only for `mysql_data` / `redis_data`'),
+    'CREATE.md keeps named volumes only for mysql_data / redis_data'
+);
+fyrst_assert(
+    !str_contains($create, 'volume archives'),
+    'CREATE.md does not describe runtime sync as volume archives'
+);
+fyrst_assert(
+    !str_contains($create, 'Docker named volumes on the VPS'),
+    'CREATE.md does not assign named volumes to VPS media/files'
 );
 fyrst_assert(
     str_contains($create, 'live → staging/playground/dev'),
@@ -232,7 +312,19 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($create, '**out of git** and **out of the image**'),
-    'CREATE.md states runtime DB/volumes stay out of git and the image'
+    'CREATE.md states runtime DB/bind-mount data stay out of git and the image'
+);
+fyrst_assert(
+    str_contains($create, 'rsync path remap'),
+    'CREATE.md states local sync uses rsync path remap'
+);
+fyrst_assert(
+    str_contains($create, 'shopware-cli project dev'),
+    'CREATE.md names shopware-cli project dev as the local consumer'
+);
+fyrst_assert(
+    str_contains($create, 'Do **not** use `deploy/sync-runtime.sh` locally'),
+    'CREATE.md forbids VPS sync script on a laptop'
 );
 fyrst_assert(
     str_contains($create, 'not the CLI-managed root `compose.yaml`'),
