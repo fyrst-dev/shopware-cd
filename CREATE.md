@@ -35,8 +35,9 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] VPS deploy uses `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`, not the CLI-managed root `compose.yaml`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] `.env` was **not** written by Flex; copy `.env.example` → `.env` yourself
-- [ ] Runtime DB + media/files stay **out of git** and **out of the image**. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data`. VPS env copy is `deploy/sync-runtime.sh` (SSH + dump + rsync of those host dirs). **No S3.** Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`) — **not** `deploy/sync-runtime.sh`.
-- [ ] VPS: `mkdir -p /var/lib/shopware/data/{files,media,thumbnail,theme,sitemap}` and `chown` to uid 82 (www-data in docker-base)
+- [ ] Identity (locked hybrid): `SHOPWARE_SHOP_ID` (stable shop slug, same on live/staging/laptop), `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …), `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` (unique on the host; do not hardcode `shopware`), `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`; optional override; set explicitly in `.env`)
+- [ ] Runtime DB + media/files stay **out of git** and **out of the image**. VPS **bind mounts** under `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data` (scoped by `COMPOSE_PROJECT_NAME`). VPS env copy is `deploy/sync-runtime.sh` (SSH + dump + rsync of those host dirs; paths from shop id + deploy env). **No S3.** Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`; remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`) — **not** `deploy/sync-runtime.sh`.
+- [ ] VPS: `mkdir -p "$SHOPWARE_DATA_ROOT"/{files,media,thumbnail,theme,sitemap}` and `chown` to uid 82 (www-data in docker-base) — shop/env root, not a global `/var/lib/shopware/data`
 
 If Flex did not copy files, the shop is missing the [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes) endpoint. See [README.md](README.md). Refresh later with `composer recipes:update fyrst/shopware-cd`.
 
@@ -52,12 +53,15 @@ Fill placeholders — never commit values.
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
 - [ ] Runtime: `APP_URL`, `APP_SECRET`, `DATABASE_URL`
-- [ ] Runtime: `SHOPWARE_DATA_ROOT` if not using the default `/var/lib/shopware/data`
+- [ ] Runtime: `SHOPWARE_SHOP_ID` (stable shop slug)
+- [ ] Runtime: `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …)
+- [ ] Runtime: `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` (unique on the host)
+- [ ] Runtime: `SHOPWARE_DATA_ROOT` (default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`; optional override). Set explicitly in `.env`.
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
 - [ ] Optional: `DEPLOY_TARGET=managed` plus host-specific vars (see `deploy/managed/README.md` after Flex)
 - [ ] Optional: `COMPOSE_PROFILES=redis,worker,scheduler` on the VPS if you use those services
-- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env). Never commit filled `deploy/sync.env`. Never auto-push into live.
-- [ ] Optional: on a laptop, pull live media/files into `shopware-cli project dev` with `bash deploy/sync-runtime-local.sh --from live --data all` (rsync remaps `$SHOPWARE_DATA_ROOT` → `files/` and `public/{media,thumbnail,theme,sitemap}`). Do **not** use `deploy/sync-runtime.sh` locally.
+- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env). Script uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Never commit filled `deploy/sync.env`. Never auto-push into live.
+- [ ] Optional: on a laptop, set `SHOPWARE_SHOP_ID` (same as live) and pull live media/files into `shopware-cli project dev` with `bash deploy/sync-runtime-local.sh --from live --data all` (remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` → `files/` and `public/{media,thumbnail,theme,sitemap}`). Do **not** use `deploy/sync-runtime.sh` locally.
 
 ## First pipeline
 
@@ -65,7 +69,7 @@ Fill placeholders — never commit values.
 - [ ] Build → push `:sha` (+ `:latest` on `main`) succeeds
 - [ ] Deploy job SSHs to the VPS, pulls, Compose up, one-shot setup
 - [ ] Storefront + admin + health/smoke URL verified
-- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `SHOPWARE_DATA_ROOT`; live → staging/playground/dev uses `deploy/sync-runtime.sh`. Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh`.
+- [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `SHOPWARE_DATA_ROOT` (`/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`); live → staging/playground/dev uses `deploy/sync-runtime.sh` (shop id + deploy env). Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh` (remote auto from `SHOPWARE_SHOP_ID` + `live`).
 
 ## Anti-patterns (do not)
 
@@ -79,6 +83,8 @@ Fill placeholders — never commit values.
 - [ ] Do not skip `shopware/docker` or build from a shop-root `Dockerfile`
 - [ ] Do not rsync `vendor/` or skip `shopware-deployment-helper`
 - [ ] Do not put media, uploads, or DB dumps in git or the image
+- [ ] Do not use a single global `/var/lib/shopware/data` without `SHOPWARE_SHOP_ID` / `SHOPWARE_DEPLOY_ENV` segments
+- [ ] Do not hardcode Compose project name `shopware` (use `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`)
 - [ ] Do not use S3 as the default VPS env-to-env copy (SSH + dump + rsync of those host dirs via `deploy/sync-runtime.sh`)
 - [ ] Do not run `deploy/sync-runtime.sh` against local `shopware-cli project dev` (VPS only; local remap is `deploy/sync-runtime-local.sh`)
 - [ ] Do not cron a push into live (the consumer pulls from live)
