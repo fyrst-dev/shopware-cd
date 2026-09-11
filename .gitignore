@@ -1,5 +1,5 @@
 # Package-level ignores for fyrst/shopware-cd (the Packagist library).
-# Shop gitignore lives in fyrst-dev/recipes (fyrst/shopware-cd/1.0/root/.gitignore).
+# Shop .gitignore is owned by shopware-cli project create, not the Flex recipe.
 
 /vendor/
 composer.lock

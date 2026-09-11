@@ -145,6 +145,69 @@ fyrst_assert(
     'CREATE.md uses the same composer require line as fyrst/shopware-cd'
 );
 
+fyrst_assert(
+    str_contains($readme, 'does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml`'),
+    'README states Flex does not copy CLI-owned compose.yaml / .gitignore / .shopware-project.yaml'
+);
+fyrst_assert(
+    str_contains($readme, '`shopware-cli project create` owns those'),
+    'README states shopware-cli project create owns those files'
+);
+fyrst_assert(
+    str_contains($readme, 'deploy/compose.yaml'),
+    'README names deploy/compose.yaml as CD Compose'
+);
+fyrst_assert(
+    str_contains($readme, 'deploy/compose.prod.yaml'),
+    'README names deploy/compose.prod.yaml'
+);
+fyrst_assert(
+    str_contains($readme, 'deploy/compose.vps.yaml'),
+    'README names deploy/compose.vps.yaml'
+);
+fyrst_assert(
+    str_contains($readme, 'does **not** use the CLI-managed root `compose.yaml`'),
+    'README states VPS does not use the CLI-managed root compose.yaml'
+);
+fyrst_assert(
+    !str_contains($readme, 'dual CI, Compose, `deploy/`, `.shopware-project.yaml`'),
+    'README does not list CLI-owned files as Flex copies'
+);
+fyrst_assert(
+    !str_contains($readme, '## Compose layout (after Flex)'),
+    'README does not treat root Compose as Flex-copied'
+);
+
+fyrst_assert(
+    str_contains($create, 'The fyrst Flex recipe does **not** copy those'),
+    'CREATE.md states Flex does not copy CLI-owned files'
+);
+fyrst_assert(
+    str_contains($create, 'deploy/compose.yaml'),
+    'CREATE.md names deploy/compose.yaml'
+);
+fyrst_assert(
+    str_contains($create, 'not the CLI-managed root `compose.yaml`'),
+    'CREATE.md states VPS does not use root compose.yaml'
+);
+fyrst_assert(
+    !str_contains($create, 'Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `compose.yaml`, `compose.prod.yaml`, `deploy/`'),
+    'CREATE.md does not list root compose.yaml as Flex-copied'
+);
+
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'owned by shopware-cli'),
+    'description states shopware-cli owns root compose.yaml'
+);
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'deploy Compose'),
+    'description says deploy Compose not root Compose'
+);
+fyrst_assert(
+    !str_contains((string) ($composer['description'] ?? ''), 'CI, Compose, deploy'),
+    'description does not use old Flex-copies-Compose wording'
+);
+
 $docs = [
     'README.md' => $readme,
     'CREATE.md' => $create,
@@ -162,6 +225,10 @@ foreach ($docs as $name => $text) {
     fyrst_assert(
         !preg_match('/root `?Dockerfile`? as fallback/i', $text),
         "{$name} does not describe a root Dockerfile fallback"
+    );
+    fyrst_assert(
+        !preg_match('/Flex (loads|copied|copies) CI, Compose/', $text),
+        "{$name} does not say Flex copies Compose at shop root"
     );
 }
 
