@@ -4,7 +4,7 @@ Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
 This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library only**.
 
-This package does **not** contain overlay files. **Symfony Flex** loads CI, Compose, deploy, `.env.example`, and related shop files from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
+This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (including CD Compose) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (and local Docker via the CLI). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
@@ -17,7 +17,8 @@ There is **no** git submodule, **no** custom `fyrst-shopware-cd` CLI, **no** Com
 | Piece | Role |
 | --- | --- |
 | This repo ([`fyrst-dev/shopware-cd`](https://github.com/fyrst-dev/shopware-cd)) | Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd): thin library. **No** shop file copies. |
-| [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) | Owns and serves **all** overlay files at `fyrst/shopware-cd/1.0/`. Compiles [`flex/main/index.json`](https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json). **Source of truth** for what shops get via Flex. |
+| `shopware-cli project create` | Owns `compose.yaml`, `.gitignore`, `.shopware-project.yaml`, and local Docker (`shopware-cli project dev`). The fyrst Flex recipe does **not** copy those. |
+| [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) | Owns and serves Flex overlay files at `fyrst/shopware-cd/1.0/`. Compiles [`flex/main/index.json`](https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json). **Source of truth** for what shops get via Flex. |
 
 Flex maps the Packagist package name `fyrst/shopware-cd` to a recipe **only** via the shop’s `extra.symfony.endpoint` list — not via a `require` of the recipes repo.
 
@@ -56,13 +57,13 @@ Flex then:
 
 - `shopware/docker` → **required**. Flex copies official `docker/Dockerfile`. Image builds **always** use that file. CI `DOCKERFILE=docker/Dockerfile` (or default to that). The fyrst recipe does **not** ship a shop-root `Dockerfile`.
 - `shopware/deployment-helper` → install/update at deploy time
-- `fyrst/shopware-cd` → dual CI, Compose, `deploy/`, `.shopware-project.yaml`, `.env.example`, `.dockerignore` (from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package)
+- `fyrst/shopware-cd` → `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` including `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml` (from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package). Does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml`.
 
 Wizard defaults for fyrst: current stable Shopware, **Docker = yes**.
 
 Commit the files Flex copied. `vendor/` is gitignored; CI and the VPS checkout need those paths in git.
 
-If a file already exists, Flex skips or prompts (it does not overwrite `.env`). Shop-specific Compose tweaks belong in `compose.override.yaml`.
+If a file already exists, Flex skips or prompts (it does not overwrite `.env`). Shop-specific **local** Compose tweaks belong in `compose.override.yaml` next to the CLI-owned root `compose.yaml`.
 
 Without the fyrst-dev/recipes endpoint, Flex installs the empty library and copies **no** overlay files.
 
@@ -70,7 +71,7 @@ Without the fyrst-dev/recipes endpoint, Flex installs the empty library and copi
 
 Overlay files are **not** in this repo. Edit them in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes):
 
-1. Change files under `fyrst/shopware-cd/1.0/` in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes).
+1. Change files under `fyrst/shopware-cd/1.0/` in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes). Do **not** add `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` to the recipe — those stay CLI-owned.
 2. Push (or merge) to `main`.
 3. Wait for the **Update Flex endpoint** workflow to rebuild `flex/main` (`index.json`).
 4. In each shop:
@@ -86,13 +87,15 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Topic | Decision |
 | --- | --- |
 | Create | `shopware-cli project create` / `npx @shopware-ag/shopware-cli` |
+| CLI-owned files | `compose.yaml`, `.gitignore`, `.shopware-project.yaml` (and local Docker via CLI). Flex does **not** copy these. |
 | Overlay | `extra.symfony.endpoint` (fyrst-dev/recipes first) then `composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd` + Symfony Flex |
-| Local | Docker via `shopware-cli project dev` |
+| Overlay files | CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`) |
+| Local | Docker via `shopware-cli project dev` (CLI-managed root `compose.yaml`) |
 | Runtime | App **always** runs in Docker (`shopware/docker` / `ghcr.io/shopware/docker-base`) |
 | Image | Always `docker/Dockerfile` from required `shopware/docker`. CI `DOCKERFILE=docker/Dockerfile` (or default to that). |
 | Build | `shopware-cli project ci` inside that multi-stage `docker/Dockerfile` |
 | CI | GitHub Actions **and** GitLab CI, same stages |
-| Primary deploy | Docker Compose on a VPS (pull image, up web, one-shot setup) |
+| Primary deploy | Docker Compose on a VPS using `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml` (not root `compose.yaml`) |
 | Optional deploy | Managed container host (same image; only the deploy job differs) |
 | Deploy-time tasks | `vendor/bin/shopware-deployment-helper run --skip-theme-compile --skip-assets-install` |
 
@@ -173,7 +176,7 @@ The only image build file is `docker/Dockerfile`. Do **not** maintain a second D
 | Default branch (`main`) | also `:latest` |
 | Git tag `v*` | also `:semver` (`1.2.3`, `1.2`) |
 
-PHP is pinned to **8.3** via `PHP_VERSION` in `docker/Dockerfile` / Compose build args.
+PHP is pinned to **8.3** via `PHP_VERSION` in `docker/Dockerfile` / deploy Compose build args.
 
 ## How Flex finds the recipe
 
@@ -185,12 +188,21 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 
 [symfony/recipes-contrib](https://github.com/symfony/recipes-contrib) is **not** the primary path. An optional contrib PR may exist; do **not** wait on it. Keep using the fyrst-dev/recipes endpoint.
 
-## Compose layout (after Flex)
+## Compose layout
 
-- `compose.yaml` — shared services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles
-- `compose.prod.yaml` — VPS/prod overrides
+**Local (CLI-owned, not Flex):**
+
+- `compose.yaml` — from `shopware-cli project create`. Local Docker via `shopware-cli project dev`. Shop-specific tweaks belong in `compose.override.yaml`.
+- `.gitignore` / `.shopware-project.yaml` — also from `shopware-cli project create`
+
+**CD / VPS (Flex-copied under `deploy/`):**
+
+- `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles
+- `deploy/compose.prod.yaml` — VPS/prod overrides
 - `deploy/compose.vps.yaml` — pull policy / no rebuild on the VPS
 - `deploy/vps-release.sh` — release command on the VPS (also invoked from CI)
+
+The VPS uses those deploy Compose files. It does **not** use the CLI-managed root `compose.yaml`.
 
 Setup always:
 
@@ -226,6 +238,8 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Custom `create` / `apply` CLIs or Composer plugins that copy files
 - Requiring `fyrst-dev/recipes` as a Composer package (Flex uses `extra.symfony.endpoint`)
 - Skipping the fyrst-dev/recipes endpoint before `composer require` (Flex copies nothing)
+- Letting the fyrst Flex recipe copy or overwrite `compose.yaml`, `.gitignore`, or `.shopware-project.yaml`
+- Deploying the VPS from the CLI-managed root `compose.yaml` (use `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`)
 - Editing overlay files in this repo (they are not here; change [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes))
 - Skipping the Deployment Helper
 - Committing `.env`, `auth.json`, or real hostnames
