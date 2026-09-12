@@ -8,7 +8,7 @@ This package does **not** contain overlay files. **Symfony Flex** loads CI (`.gi
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
-**Build once, run everywhere.** The image is identical for every target. Only the last mile forks: Docker Compose on a VPS (primary) vs a managed container host (optional).
+**Build once, run everywhere.** The image is identical for every target. The supported last mile is Docker Compose on a VPS. A managed container host is **planned / not implemented**.
 
 There is **no** git submodule, **no** custom `fyrst-shopware-cd` CLI, **no** Composer plugin that copies files, and **no** Composer dependency on [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes).
 
@@ -98,7 +98,7 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Identity (hybrid) | Required SoT: `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV`. Optional `SHOPWARE_DATA_BASE`. `COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional** — Docker Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `SHOPWARE_DATA_ROOT=${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`. Compose uses those SoT vars directly. No hardcoded Compose project name `shopware`. |
 | Primary deploy | Docker Compose on a VPS using `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml` (not root `compose.yaml`) |
 | Runtime data | Out of git and out of the image. VPS **bind mounts** under the derived shop/env root (`{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data` (scoped by the derived Compose project name). VPS: `deploy/sync-runtime.sh` live → staging/playground/dev (SSH + dump + rsync of those host dirs; **no S3**; cron on the consumer; paths from shop id + deploy env). Local `shopware-cli project dev`: `deploy/sync-runtime-local.sh` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`; remote default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`) |
-| Optional deploy | Managed container host (same image; only the deploy job differs) |
+| Managed deploy | **Planned / not implemented** (same image contract; no CI job). Compose/VPS is the only supported last mile. |
 | Deploy-time tasks | `vendor/bin/shopware-deployment-helper run --skip-theme-compile --skip-assets-install` |
 
 Out of scope: bare Deployer/SSH without containers, Shopware PaaS as default, compiling assets on the production host, git submodules, custom create wrappers, S3 as the default VPS env-to-env copy.
@@ -188,7 +188,7 @@ Push to GitHub and/or GitLab on `main` (or a `v*` tag):
 
 1. **Build** — `docker buildx` with BuildKit secrets; `shopware-cli project ci` inside the `shopware-cli` image.
 2. **Push** — `:git-sha` always; `:latest` on default branch; `:semver` on version tags.
-3. **Deploy** — primary: SSH to the VPS, pull image, Compose up, one-shot setup. Optional: managed host when `DEPLOY_TARGET=managed`.
+3. **Deploy** — SSH to the VPS, pull image, Compose up, one-shot setup. Managed host (`DEPLOY_TARGET=managed`) is **planned / not implemented** and is not a supported CI switch.
 
 Local day-to-day:
 
@@ -198,22 +198,22 @@ shopware-cli project dev
 
 To pull live media/files into that checkout, use `deploy/sync-runtime-local.sh` (rsync path remap). Do **not** run `deploy/sync-runtime.sh` on a laptop — that script is VPS-only.
 
-## Primary vs optional deploy
+## Primary vs planned deploy
 
 ```
                     ┌─ shopware-cli project ci ─┐
-  git push  ──────►  │     multi-stage image    │ ──► registry (:sha / :latest / :semver)
-                    └──────────────────────────┘
+  git push  ──────│     multi-stage image    │ ──│ registry (:sha / :latest / :semver)
+                    └───────────────────────────┘
                                    │
             ┌──────────────────────┴──────────────────────┐
             ▼                                             ▼
-   Primary: Compose / VPS                      Optional: managed host
+   Primary: Compose / VPS                      Planned: managed host
    SSH → pull → compose up web                 Same image, different job
-   + setup one-shot                             (platform API / their registry)
+   + setup one-shot                             (not implemented; no CI job)
 ```
 
-- **Primary (Compose / VPS):** `deploy/README.md` after Flex copies it.
-- **Optional (managed host):** `deploy/managed/README.md`. Gate with `DEPLOY_TARGET=managed`.
+- **Primary (Compose / VPS):** `deploy/README.md` after Flex copies it. Live recommendation: uncomment `COMPOSE_PROFILES=redis,worker,scheduler` in `.env`. Staging leaves profiles unset unless you intentionally need worker/scheduler.
+- **Planned (managed host):** `deploy/managed/README.md`. **Not implemented.** `DEPLOY_TARGET=managed` is not a supported switch.
 
 The only image build file is `docker/Dockerfile`. Do **not** maintain a second Dockerfile per target or per CI system.
 
@@ -287,6 +287,7 @@ cd /opt/shopware/acme-staging
 # .env: SHOPWARE_SHOP_ID=acme SHOPWARE_DEPLOY_ENV=staging
 # COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT stay unset (derived)
 cp deploy/sync.env.example deploy/sync.env   # SYNC_SSH_* to live; SYNC_ENV=<this env>
+# Opt-in (default off; refused on live): SYNC_REWRITE_APP_URL=https://staging.example.com
 bash deploy/sync-runtime.sh sync --from live --data all
 ```
 
@@ -360,3 +361,12 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Using S3/MinIO as the default way to copy live data to staging (use `deploy/sync-runtime.sh`: SSH + dump + rsync of those host dirs)
 - Running `deploy/sync-runtime.sh` against local `shopware-cli project dev` (that script is VPS `SHOPWARE_DATA_ROOT`; use `deploy/sync-runtime-local.sh`)
 - Cron that pushes into live (the consumer pulls from live)
+- Treating managed-host deploy as a supported CI path (`DEPLOY_TARGET=managed` is planned / not implemented)
+
+## Roadmap (ops)
+
+Overlay work lives in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes). Package docs stay aligned with those epics:
+
+- P0 production hardening — [recipes#10](https://github.com/fyrst-dev/recipes/issues/10)
+- P1 staging & day-2 ops — [recipes#11](https://github.com/fyrst-dev/recipes/issues/11) (this package: [#14](https://github.com/fyrst-dev/shopware-cd/issues/14))
+- P2 follow-ups — [recipes#12](https://github.com/fyrst-dev/recipes/issues/12)
