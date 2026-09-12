@@ -32,7 +32,8 @@ fyrst_token_assert(
     'README marks SHOPWARE_PACKAGES_TOKEN as optional'
 );
 fyrst_token_assert(
-    str_contains($readme, 'set only if the shop uses'),
+    str_contains($readme, 'set only if the shop uses')
+        || str_contains($readme, 'Set only if the shop uses'),
     'README says set packages token only if the shop uses packages.shopware.com'
 );
 fyrst_token_assert(
