@@ -47,7 +47,7 @@ To change overlay files: edit [fyrst-dev/recipes](https://github.com/fyrst-dev/r
 
 Fill placeholders — never commit values.
 
-- [ ] CI: `SHOPWARE_PACKAGES_TOKEN`
+- [ ] Optional CI: `SHOPWARE_PACKAGES_TOKEN` — set only if the shop uses packages.shopware.com (empty is fine)
 - [ ] CI: `COMPOSER_AUTH` / `auth.json` if you have private Composer repos
 - [ ] CI: registry login (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or platform defaults)
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
