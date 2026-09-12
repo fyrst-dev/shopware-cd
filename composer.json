@@ -1,6 +1,6 @@
 {
     "name": "fyrst/shopware-cd",
-    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Overlay files (CI, deploy Compose, .env.example) are served by Symfony Flex from fyrst-dev/recipes, not this package. Root compose.yaml, .gitignore, and .shopware-project.yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
+    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Overlay files (CI, deploy Compose, .env.example) are served by Symfony Flex from fyrst-dev/recipes, not this package. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
     "license": "MIT",
     "type": "library",
     "keywords": [
