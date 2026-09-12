@@ -150,6 +150,26 @@ fyrst_assert(
     'README states Flex does not copy CLI-owned compose.yaml / .gitignore / .shopware-project.yaml'
 );
 fyrst_assert(
+    str_contains($readme, '.shopware-project.yml'),
+    'README names create’s .shopware-project.yml'
+);
+fyrst_assert(
+    str_contains($readme, 'do not rename'),
+    'README says do not rename create’s .yml'
+);
+fyrst_assert(
+    str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop'),
+    'README warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
+);
+fyrst_assert(
+    str_contains($readme, 'PULL_POLICY=never'),
+    'README documents PULL_POLICY=never for same-host tag-and-load'
+);
+fyrst_assert(
+    str_contains($readme, 'SKIP_PULL=1'),
+    'README documents SKIP_PULL=1'
+);
+fyrst_assert(
     str_contains($readme, '`shopware-cli project create` owns those'),
     'README states shopware-cli project create owns those files'
 );
@@ -315,6 +335,22 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'The fyrst Flex recipe does **not** copy those'),
     'CREATE.md states Flex does not copy CLI-owned files'
+);
+fyrst_assert(
+    str_contains($create, '.shopware-project.yml'),
+    'CREATE.md names create’s .shopware-project.yml'
+);
+fyrst_assert(
+    str_contains($create, 'do not rename'),
+    'CREATE.md says do not rename create’s .yml'
+);
+fyrst_assert(
+    str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop'),
+    'CREATE.md warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
+);
+fyrst_assert(
+    str_contains($create, 'PULL_POLICY=never'),
+    'CREATE.md documents PULL_POLICY=never'
 );
 fyrst_assert(
     str_contains($create, 'deploy/compose.yaml'),
