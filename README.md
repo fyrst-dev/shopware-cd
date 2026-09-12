@@ -205,9 +205,9 @@ To pull live media/files into that checkout, use `deploy/sync-runtime-local.sh` 
 ```
                     ┌─ shopware-cli project ci ─┐
   git push  ──────│     multi-stage image    │  ──│ registry (:sha / :latest / :semver)
-                    └────────────────────────────────────┘
+                    └──────────────────────────────┘
                                    │
-            ┌────────────────────────┴─────────────────────┐
+            ┌───────────────────────┴──────────────────────┐
             ▼                                             ▼
    Primary: Compose / VPS                      Planned: managed host
    SSH → pull → compose up web                 Same image, different job
