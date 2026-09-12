@@ -110,14 +110,14 @@ Several shops, and live + staging of the same shop, can share one VPS. Isolate t
 **Required** source of truth in shop-root `.env`:
 
 | Variable | Meaning | Example |
-| --- | --- |
+| --- | --- | --- |
 | `SHOPWARE_SHOP_ID` | Stable shop slug (same on live, staging, and laptop) | `acme` |
 | `SHOPWARE_DEPLOY_ENV` | This stack’s role | `live` / `staging` / `playground` / … |
 
 **Optional** (Compose and sync derive these when unset):
 
 | Variable | Meaning | When unset |
-| --- | --- |
+| --- | --- | --- |
 | `SHOPWARE_DATA_BASE` | Host prefix for bind-mount trees | `/var/lib/shopware/data` |
 | `COMPOSE_PROJECT_NAME` | Docker project name override | `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` → `acme-live` |
 | `SHOPWARE_DATA_ROOT` | Bind-mount root override | `${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` |
@@ -207,7 +207,7 @@ To pull live media/files into that checkout, use `deploy/sync-runtime-local.sh` 
   git push  ──────│     multi-stage image    │  ──│ registry (:sha / :latest / :semver)
                     └────────────────────────────────────┘
                                    │
-            ┌───────────────────────┴───────────────────────┐
+            ┌────────────────────────┴─────────────────────┐
             ▼                                             ▼
    Primary: Compose / VPS                      Planned: managed host
    SSH → pull → compose up web                 Same image, different job
