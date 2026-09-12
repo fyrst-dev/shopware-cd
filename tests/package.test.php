@@ -446,6 +446,24 @@ fyrst_assert(
     !str_contains($create, 'Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `compose.yaml`, `compose.prod.yaml`, `deploy/`'),
     'CREATE.md does not list root compose.yaml as Flex-copied'
 );
+fyrst_assert(
+    str_contains($readme, 'planned / not implemented')
+        && str_contains($create, 'not implemented'),
+    'README/CREATE mark managed host as planned / not implemented'
+);
+fyrst_assert(
+    !str_contains($readme, 'Gate with `DEPLOY_TARGET=managed`'),
+    'README does not treat DEPLOY_TARGET=managed as a working switch'
+);
+fyrst_assert(
+    str_contains($readme, 'COMPOSE_PROFILES=redis,worker,scheduler')
+        && str_contains($create, 'COMPOSE_PROFILES=redis,worker,scheduler'),
+    'README/CREATE recommend live COMPOSE_PROFILES'
+);
+fyrst_assert(
+    str_contains($readme, 'recipes#11') && str_contains($readme, 'recipes#10'),
+    'README links P0–P2 recipes epics'
+);
 
 fyrst_assert(
     str_contains((string) ($composer['description'] ?? ''), 'owned by shopware-cli'),

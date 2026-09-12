@@ -58,9 +58,9 @@ Fill placeholders — never commit values.
 - [ ] Optional: `SHOPWARE_DATA_BASE` (prefix `/var/lib/shopware/data` when unset)
 - [ ] Optional: `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` — Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` when unset. Compose uses those SoT vars directly.
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
-- [ ] Optional: `DEPLOY_TARGET=managed` plus host-specific vars (see `deploy/managed/README.md` after Flex)
-- [ ] Optional: `COMPOSE_PROFILES=redis,worker,scheduler` on the VPS if you use those services
-- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env). Script uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Never commit filled `deploy/sync.env`. Never auto-push into live.
+- [ ] Planned only: managed host (`deploy/managed/README.md`) is **not implemented**. Do not set `DEPLOY_TARGET=managed` expecting a deploy.
+- [ ] **Live:** uncomment `COMPOSE_PROFILES=redis,worker,scheduler` in `.env` (worker + scheduler; redis if used). Leave unset on staging unless you need async/scheduled tasks. Release warns on live when empty; it does not auto-enable.
+- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env). Script uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Opt-in sales-channel rewrite: `SYNC_REWRITE_APP_URL` (default off; refused on live). Review payment/shipping webhooks after a live pull. Never commit filled `deploy/sync.env`. Never auto-push into live.
 - [ ] Optional: on a laptop, set `SHOPWARE_SHOP_ID` (same as live) and pull live media/files into `shopware-cli project dev` with `bash deploy/sync-runtime-local.sh --from live --data all` (remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` → `files/` and `public/{media,thumbnail,theme,sitemap}`). Do **not** use `deploy/sync-runtime.sh` locally.
 
 ## First pipeline
