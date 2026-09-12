@@ -143,7 +143,7 @@ Named volumes `mysql_data` / `redis_data` are scoped by the derived Compose proj
 
 | Name | Purpose |
 | --- | --- |
-| `SHOPWARE_PACKAGES_TOKEN` | [packages.shopware.com](https://packages.shopware.com) |
+| `SHOPWARE_PACKAGES_TOKEN` | Optional. Set only if the shop uses [packages.shopware.com](https://packages.shopware.com). Empty is fine. |
 | `COMPOSER_AUTH` | Optional JSON for private Composer repos (`auth.json`) |
 | `REGISTRY_*` | Push the image (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or GitHub `GITHUB_TOKEN` / GitLab `CI_REGISTRY_*`) |
 | `REGISTRY_IMAGE` | Optional override of the image name |
@@ -202,10 +202,10 @@ To pull live media/files into that checkout, use `deploy/sync-runtime-local.sh` 
 
 ```
                     ┌─ shopware-cli project ci ─┐
-  git push  ──────│     multi-stage image    │ ──│ registry (:sha / :latest / :semver)
-                    └───────────────────────────┘
+  git push  ──────│     multi-stage image    │  ──│ registry (:sha / :latest / :semver)
+                    └──────────────────────────────┘
                                    │
-            ┌──────────────────────┴──────────────────────┐
+            ┌───────────────────────┴──────────────────────┐
             ▼                                             ▼
    Primary: Compose / VPS                      Planned: managed host
    SSH → pull → compose up web                 Same image, different job

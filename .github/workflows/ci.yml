@@ -26,3 +26,6 @@ jobs:
 
       - name: Package smoke
         run: php tests/package.test.php
+
+      - name: Packages token is optional
+        run: php tests/packages-token.test.php
