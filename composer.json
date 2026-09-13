@@ -1,6 +1,6 @@
 {
     "name": "fyrst/shopware-cd",
-    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Overlay files (CI, deploy Compose, .env.example) are served by Symfony Flex from fyrst-dev/recipes, not this package. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
+    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Provides fyrst:sales-channel:rewrite-urls (sales_channel_domain.url after a non-live DB restore). Overlay files (CI, deploy Compose, .env.example) are served by Symfony Flex from fyrst-dev/recipes, not this package. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
     "license": "MIT",
     "type": "library",
     "keywords": [
@@ -18,7 +18,24 @@
         "issues": "https://github.com/fyrst-dev/shopware-cd/issues"
     },
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "doctrine/dbal": "^3.6 || ^4.0",
+        "symfony/console": "^6.3 || ^7.0",
+        "symfony/dependency-injection": "^6.3 || ^7.0",
+        "symfony/http-kernel": "^6.3 || ^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5 || ^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fyrst\\ShopwareCd\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fyrst\\ShopwareCd\\Tests\\": "tests/"
+        }
     },
     "suggest": {
         "shopware/docker": "Required. Require it on the same composer require line as fyrst/shopware-cd. Flex copies the official multi-stage Dockerfile to docker/Dockerfile. Image builds always use that file; set CI DOCKERFILE=docker/Dockerfile (or default to that).",
@@ -27,9 +44,21 @@
     "extra": {
         "branch-alias": {
             "dev-main": "1.0.x-dev"
+        },
+        "symfony": {
+            "bundle": {
+                "Fyrst\\ShopwareCd\\FyrstShopwareCdBundle": ["all"]
+            }
         }
     },
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "test": [
+            "@php vendor/bin/phpunit",
+            "@php tests/package.test.php",
+            "@php tests/packages-token.test.php"
+        ]
     }
 }
