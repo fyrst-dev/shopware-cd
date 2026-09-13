@@ -4,7 +4,7 @@ Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
 This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library only**.
 
-This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/sync-runtime.sh` for VPS and `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (create writes `.shopware-project.yml`; `.yaml` is also accepted — do not rename). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
+This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/init-env.sh`, `deploy/sync-runtime.sh` for VPS and `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (create writes `.shopware-project.yml`; `.yaml` is also accepted — do not rename). Flex `env` may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id; no secrets). It does **not** overwrite create’s whole `.env`. Then run `bash deploy/init-env.sh --shop-id <slug>`. The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
@@ -49,6 +49,8 @@ cd <shop-name>
 composer config extra.symfony.allow-contrib true
 composer config --json extra.symfony.endpoint '["https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json","https://raw.githubusercontent.com/shopware/recipes/flex/main/index.json","flex://defaults"]'
 composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd
+bash deploy/init-env.sh --shop-id <slug>
+# VPS: bash deploy/init-env.sh --shop-id <slug> --vps
 ```
 
 Run Composer **inside Docker** when the web container is up (`docker compose exec web composer …`). Host PHP is often under-provisioned.
@@ -57,13 +59,13 @@ Flex then:
 
 - `shopware/docker` → **required**. Flex copies official `docker/Dockerfile`. Image builds **always** use that file. CI `DOCKERFILE=docker/Dockerfile` (or default to that). The fyrst recipe does **not** ship a shop-root `Dockerfile`.
 - `shopware/deployment-helper` → install/update at deploy time
-- `fyrst/shopware-cd` → `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` including `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh` (VPS), and `deploy/sync-runtime-local.sh` (local `shopware-cli project dev`) — from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package. Does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` / `.shopware-project.yml`.
+- `fyrst/shopware-cd` → `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` including `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/init-env.sh`, `deploy/sync-runtime.sh` (VPS), and `deploy/sync-runtime-local.sh` (local `shopware-cli project dev`) — from [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes), not this package. Does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` / `.shopware-project.yml`. Flex `env` appends a `###> fyrst/shopware-cd ###` block (safe defaults). Finish values with `bash deploy/init-env.sh --shop-id <slug>`.
 
 Wizard defaults for fyrst: current stable Shopware, **Docker = yes**.
 
 Commit the files Flex copied. `vendor/` is gitignored; CI and the VPS checkout need those paths in git.
 
-If a file already exists, Flex skips or prompts (it does not overwrite `.env`). Shop-specific **local** Compose tweaks belong in `compose.override.yaml` next to the CLI-owned root `compose.yaml`.
+If a file already exists, Flex skips or prompts. Flex `env` **appends** to `.env`; it does **not** overwrite create’s whole `.env`. Shop-specific **local** Compose tweaks belong in `compose.override.yaml` next to the CLI-owned root `compose.yaml`.
 
 Without the fyrst-dev/recipes endpoint, Flex installs the empty library and copies **no** overlay files.
 
@@ -89,7 +91,7 @@ See the [recipes README](https://github.com/fyrst-dev/recipes) for endpoint deta
 | Create | `shopware-cli project create` / `npx @shopware-ag/shopware-cli` |
 | CLI-owned files | `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` also accepted — do not rename) and local Docker via CLI. Flex does **not** copy these. |
 | Overlay | `extra.symfony.endpoint` (fyrst-dev/recipes first) then `composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd` + Symfony Flex |
-| Overlay files | CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh`) |
+| Overlay files | CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, `deploy/init-env.sh`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh`) |
 | Local | Docker via `shopware-cli project dev` (CLI-managed root `compose.yaml`). Live media/files: `deploy/sync-runtime-local.sh` (rsync path remap into the project tree; remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` — not `deploy/sync-runtime.sh`) |
 | Runtime | App **always** runs in Docker (`shopware/docker` / `ghcr.io/shopware/docker-base`) |
 | Image | Always `docker/Dockerfile` from required `shopware/docker`. CI `DOCKERFILE=docker/Dockerfile` (or default to that). |
@@ -124,7 +126,16 @@ Several shops, and live + staging of the same shop, can share one VPS. Isolate t
 
 `COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**. `deploy/compose.yaml` interpolates `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV`, and `SHOPWARE_DATA_BASE` **directly** (project name + bind-mount paths). You do **not** set expanded `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` for Compose to work.
 
-**VPS warning:** `shopware-cli project create` writes `COMPOSE_PROJECT_NAME=sw-shop-…` into shop-root `.env` for local `project dev`. That env var **overrides** Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). On the VPS, **remove or comment out** that line. The Flex recipe does **not** delete it (create owns the local flow).
+**VPS warning:** `shopware-cli project create` writes `COMPOSE_PROJECT_NAME=sw-shop-…` into shop-root `.env` for local `project dev`. That env var **overrides** Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). On the VPS, **comment out** that line with `bash deploy/init-env.sh --vps` (or by hand). Flex does **not** delete it on `composer require` (create owns the local flow).
+
+After create + `composer require`, finish shop-specific `.env` values:
+
+```bash
+bash deploy/init-env.sh --shop-id acme
+# VPS: add --vps --env live --image ghcr.io/example/acme
+```
+
+`--shop-id` is required unless already non-empty. The script merges missing keys from `.env.example` and does not invent MYSQL passwords or `APP_URL`. See `deploy/README.md` after Flex copies it.
 
 **Formula:**
 
@@ -180,7 +191,7 @@ Named volumes `mysql_data` / `redis_data` are scoped by the derived Compose proj
 | --- | --- |
 | `deploy/sync.env` | Copied from Flex `deploy/sync.env.example`. `SYNC_SSH_*` to live; `SYNC_ENV` = staging / playground / dev. Mode `0600`. Cron `deploy/sync-runtime.sh` on this host. |
 
-Placeholders live in the Flex-copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, and `.env.example`. Copy `.env.example` → `.env` yourself. Copy `deploy/sync.env.example` → `deploy/sync.env` on the consumer if you sync from live.
+Placeholders live in the Flex-copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, and `.env.example`. Flex may append SoT keys to `.env`; then run `bash deploy/init-env.sh --shop-id <slug>` (VPS: `--vps`). Copy `deploy/sync.env.example` → `deploy/sync.env` on the consumer if you sync from live.
 
 GitLab still looks for `.gitlab-ci.yml` by default — set Settings → CI/CD → CI/CD configuration file to `.gitlab-ci.yaml`. GitHub Actions and shopware-cli load the `.yaml` names directly.
 
@@ -251,6 +262,7 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 - `deploy/compose.yaml` — CD services: `web`, bundled `mysql`, optional `redis` / `setup` / `worker` / `scheduler` profiles; interpolates `SHOPWARE_SHOP_ID` / `SHOPWARE_DEPLOY_ENV` / `SHOPWARE_DATA_BASE` **directly**; **bind mounts** under the derived shop/env root (named volumes only `mysql_data` / `redis_data`, scoped by the derived Compose project name)
 - `deploy/compose.prod.yaml` — VPS/prod overrides
 - `deploy/compose.vps.yaml` — `pull_policy: ${PULL_POLICY:-always}` (CI/VPS default after a registry push). Same-host tag-and-load / air-gap: `PULL_POLICY=never` and `SKIP_PULL=1` (or `bash deploy/vps-release.sh --skip-pull`)
+- `deploy/init-env.sh` — post-create `.env` helper (Flex `env` appends safe SoT keys; this script fills shop id / env, optional `IMAGE` / `APP_SECRET`, and `--vps` comments create’s `COMPOSE_PROJECT_NAME=sw-shop-…`)
 - `deploy/vps-release.sh` — release command on the VPS (also invoked from CI). `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`.
 - `deploy/sync-runtime.sh` — VPS only: live → staging/playground/dev copy of DB + host dirs (SSH + dump + rsync; **no S3**; paths from `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV`, optional `SHOPWARE_DATA_BASE` / `SHOPWARE_DATA_ROOT`)
 - `deploy/sync-runtime-local.sh` — laptop only: live media/files into `shopware-cli project dev` (rsync path remap; remote default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`; **not** `deploy/sync-runtime.sh`)
@@ -353,7 +365,8 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Skipping the fyrst-dev/recipes endpoint before `composer require` (Flex copies nothing)
 - Letting the fyrst Flex recipe copy or overwrite `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` / `.shopware-project.yml`
 - Renaming create’s `.shopware-project.yml` to `.yaml` (shopware-cli accepts both)
-- Leaving create’s `COMPOSE_PROJECT_NAME=sw-shop-…` in the VPS `.env` (it overrides Compose `name:`)
+- Leaving create’s `COMPOSE_PROJECT_NAME=sw-shop-…` in the VPS `.env` (it overrides Compose `name:`; use `bash deploy/init-env.sh --vps`)
+- Putting real secrets in the Flex env block (empty shop id only; operators fill via `deploy/init-env.sh` or by hand)
 - Forcing a registry pull on a same-host tag-and-load (`pull_policy: always` without `PULL_POLICY=never` / `SKIP_PULL=1`)
 - Deploying the VPS from the CLI-managed root `compose.yaml` (use `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`)
 - Editing overlay files in this repo (they are not here; change [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes))

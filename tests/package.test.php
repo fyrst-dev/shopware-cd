@@ -162,6 +162,23 @@ fyrst_assert(
     'README warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
 );
 fyrst_assert(
+    str_contains($readme, 'deploy/init-env.sh'),
+    'README names deploy/init-env.sh'
+);
+fyrst_assert(
+    str_contains($readme, '###> fyrst/shopware-cd ###'),
+    'README documents the Flex env marker block'
+);
+fyrst_assert(
+    str_contains($readme, 'init-env.sh --vps')
+        || str_contains($readme, 'bash deploy/init-env.sh --vps'),
+    'README documents init-env.sh --vps'
+);
+fyrst_assert(
+    str_contains($readme, 'does **not** overwrite create’s whole `.env`'),
+    'README states Flex does not overwrite create’s whole .env'
+);
+fyrst_assert(
     str_contains($readme, 'PULL_POLICY=never'),
     'README documents PULL_POLICY=never for same-host tag-and-load'
 );
@@ -347,6 +364,23 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop'),
     'CREATE.md warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
+);
+fyrst_assert(
+    str_contains($create, 'deploy/init-env.sh'),
+    'CREATE.md names deploy/init-env.sh'
+);
+fyrst_assert(
+    str_contains($create, '###> fyrst/shopware-cd ###'),
+    'CREATE.md documents the Flex env marker block'
+);
+fyrst_assert(
+    str_contains($create, 'init-env.sh --vps')
+        || str_contains($create, 'bash deploy/init-env.sh --vps'),
+    'CREATE.md documents init-env.sh --vps'
+);
+fyrst_assert(
+    str_contains($create, 'does **not** overwrite create’s whole `.env`'),
+    'CREATE.md states Flex does not overwrite create’s whole .env'
 );
 fyrst_assert(
     str_contains($create, 'PULL_POLICY=never'),
