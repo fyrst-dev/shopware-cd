@@ -2,7 +2,7 @@
 
 Reusable **fyrst.dev** overlay for Shopware create + continuous deploy.
 
-This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library only**.
+This repository is **not** a Shopware installation. It does not vendor Shopware core. The Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd) is a **thin library** that ships `bin/console fyrst:sales-channel:rewrite-urls` (rewrite `sales_channel_domain.url` after a non-live DB restore). Overlay bash stays in recipes.
 
 This package does **not** contain overlay files. **Symfony Flex** loads CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus `deploy/init-env.sh`, `deploy/sync-runtime.sh` for VPS and `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`) from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) (`fyrst/shopware-cd/1.0/`). It does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (create writes `.shopware-project.yml`; `.yaml` is also accepted — do not rename). Flex `env` may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id; no secrets). It does **not** overwrite create’s whole `.env`. Then run `bash deploy/init-env.sh --shop-id <slug>`. The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package.
 
@@ -16,7 +16,7 @@ There is **no** git submodule, **no** custom `fyrst-shopware-cd` CLI, **no** Com
 
 | Piece | Role |
 | --- | --- |
-| This repo ([`fyrst-dev/shopware-cd`](https://github.com/fyrst-dev/shopware-cd)) | Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd): thin library. **No** shop file copies. |
+| This repo ([`fyrst-dev/shopware-cd`](https://github.com/fyrst-dev/shopware-cd)) | Packagist package [`fyrst/shopware-cd`](https://packagist.org/packages/fyrst/shopware-cd): thin library + Symfony bundle (`fyrst:sales-channel:rewrite-urls`). **No** shop file copies. |
 | `shopware-cli project create` | Owns `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` also accepted — do not rename), and local Docker (`shopware-cli project dev`). The fyrst Flex recipe does **not** copy those. |
 | [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes) | Owns and serves Flex overlay files at `fyrst/shopware-cd/1.0/`. Compiles [`flex/main/index.json`](https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json). **Source of truth** for what shops get via Flex. |
 
@@ -67,7 +67,7 @@ Commit the files Flex copied. `vendor/` is gitignored; CI and the VPS checkout n
 
 If a file already exists, Flex skips or prompts. Flex `env` **appends** to `.env`; it does **not** overwrite create’s whole `.env`. Shop-specific **local** Compose tweaks belong in `compose.override.yaml` next to the CLI-owned root `compose.yaml`.
 
-Without the fyrst-dev/recipes endpoint, Flex installs the empty library and copies **no** overlay files.
+Without the fyrst-dev/recipes endpoint, Flex copies **no** overlay files. The rewrite command still ships in this package; Flex still needs to register `FyrstShopwareCdBundle` (see [Sales-channel URL rewrite](#sales-channel-url-rewrite-console)).
 
 ## How to change the overlay
 
@@ -302,6 +302,8 @@ cd /opt/shopware/acme-staging
 # COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT stay unset (derived)
 cp deploy/sync.env.example deploy/sync.env   # SYNC_SSH_* to live; SYNC_ENV=<this env>
 # Opt-in (default off; refused on live): SYNC_REWRITE_APP_URL=https://staging.example.com
+# Overlay bash currently rewrites via SQL; it should call the console command in this
+# package after shops `composer update fyrst/shopware-cd` (companion recipes PR).
 bash deploy/sync-runtime.sh sync --from live --data all
 ```
 
@@ -335,7 +337,71 @@ shopware-cli project console cache:clear
 
 Needs SSH to live (for example `Host live` in `~/.ssh/config`) and `rsync` on the laptop. These dirs stay **gitignored** — never commit them.
 
-Pulling media/files does **not** copy the database. For a full content match, dump live into the local CLI DB separately, then rewrite sales-channel URLs for `http://127.0.0.1:8000`. Do not point local at the live database.
+Pulling media/files does **not** copy the database. For a full content match, dump live into the local CLI DB separately, then rewrite sales-channel URLs for `http://127.0.0.1:8000` (see [Sales-channel URL rewrite](#sales-channel-url-rewrite-console)). Do not point local at the live database.
+
+## Sales-channel URL rewrite (console)
+
+This package registers Symfony bundle `Fyrst\ShopwareCd\FyrstShopwareCdBundle` (`extra.symfony.bundle`) and command `fyrst:sales-channel:rewrite-urls`. Shops need a **Composer package update** (`composer update fyrst/shopware-cd`) — this is not a Flex overlay copy. `deploy/init-env.sh` stays bash in recipes; it is not a console command.
+
+**Discoverable in a Shopware app** after `composer require fyrst/shopware-cd` (or update) when Flex adds the bundle to `config/bundles.php`:
+
+1. Flex reads `extra.symfony.bundle` / the Bundle class heuristic, **or**
+2. A companion [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes) PR lists the bundle in the recipe `manifest.json` (`"Fyrst\\ShopwareCd\\FyrstShopwareCdBundle": ["all"]`) so `composer recipes:update fyrst/shopware-cd` writes `config/bundles.php`. Until that recipe lands, add one line:
+
+```php
+Fyrst\ShopwareCd\FyrstShopwareCdBundle::class => ['all' => true],
+```
+
+Then:
+
+```bash
+bin/console list fyrst
+# fyrst:sales-channel:rewrite-urls
+```
+
+Opt-in only (`--app-url` / `SYNC_REWRITE_APP_URL` and/or `--map` / `SYNC_REWRITE_URL_MAP`). Requires at least one rewrite option. Updates `sales_channel_domain.url` and `updated_at = NOW(3)` only. Does **not** touch media CDN, plugin configs, `APP_URL` in `.env`, or payment/shipping webhooks. Unique `url` collisions abort. Hard-refused when `SHOPWARE_DEPLOY_ENV`, `SYNC_ENV`, `--checkout-basename`, or hostname is `live`. `SYNC_ALLOW_LIVE_RESTORE=1` does **not** bypass that refuse.
+
+Recipes should call it from the shop checkout (same `compose run` style as `cache:clear`):
+
+```bash
+# origin replace (path/query/hash kept); staging / playground / dev only
+docker compose --env-file .env \
+  -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml \
+  run --rm --pull never --entrypoint php web bin/console fyrst:sales-channel:rewrite-urls \
+  --app-url=https://staging.example.com \
+  --deploy-env="${SHOPWARE_DEPLOY_ENV}" \
+  --sync-env="${SYNC_ENV}" \
+  --checkout-basename="$(basename "$PWD")"
+
+# 1:1 prefix map (longest old prefix first) when one origin is not enough
+docker compose --env-file .env \
+  -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml \
+  run --rm --pull never --entrypoint php web bin/console fyrst:sales-channel:rewrite-urls \
+  --map='https://shop.example.com=https://staging.example.com,https://b2b.example.com=https://b2b.staging.example.com' \
+  --deploy-env="${SHOPWARE_DEPLOY_ENV}" \
+  --sync-env="${SYNC_ENV}" \
+  --checkout-basename="$(basename "$PWD")"
+
+# plan only
+docker compose --env-file .env \
+  -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml \
+  run --rm --pull never --entrypoint php web bin/console fyrst:sales-channel:rewrite-urls \
+  --app-url=https://staging.example.com \
+  --deploy-env="${SHOPWARE_DEPLOY_ENV}" \
+  --sync-env="${SYNC_ENV}" \
+  --checkout-basename="$(basename "$PWD")" \
+  --dry-run
+```
+
+Local `shopware-cli project dev` after a live DB dump:
+
+```bash
+shopware-cli project console fyrst:sales-channel:rewrite-urls \
+  --app-url=http://127.0.0.1:8000 \
+  --deploy-env=dev \
+  --sync-env=dev \
+  --checkout-basename="$(basename "$PWD")"
+```
 
 ## File tree (this package)
 
@@ -344,8 +410,10 @@ Pulling media/files does **not** copy the database. For a full content match, du
 ├── README.md
 ├── CREATE.md
 ├── LICENSE
-├── composer.json                  # Packagist: fyrst/shopware-cd (library, not a plugin)
-└── tests/package.test.php        # thin-package smoke tests
+├── composer.json                  # Packagist: fyrst/shopware-cd (library + Symfony bundle)
+├── phpunit.xml.dist
+├── src/                          # FyrstShopwareCdBundle + fyrst:sales-channel:rewrite-urls
+└── tests/
 ```
 
 Shop overlay files live in [fyrst-dev/recipes](https://github.com/fyrst-dev/recipes/tree/main/fyrst/shopware-cd/1.0) (`fyrst/shopware-cd/1.0/`), not here.

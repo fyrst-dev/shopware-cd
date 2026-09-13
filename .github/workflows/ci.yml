@@ -24,6 +24,12 @@ jobs:
       - name: Validate composer.json
         run: composer validate --no-check-publish
 
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist --no-progress
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
       - name: Package smoke
         run: php tests/package.test.php
 

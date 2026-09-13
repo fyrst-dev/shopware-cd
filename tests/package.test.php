@@ -75,7 +75,36 @@ fyrst_assert(
     'suggest.shopware/docker has no fallback wording'
 );
 fyrst_assert(!is_dir($root . '/bin'), 'bin/ removed');
-fyrst_assert(!is_dir($root . '/src'), 'src/ plugin/CLI removed');
+fyrst_assert(is_dir($root . '/src'), 'src/ contains the Symfony bundle and rewrite command');
+fyrst_assert(
+    is_file($root . '/src/FyrstShopwareCdBundle.php'),
+    'FyrstShopwareCdBundle.php is present'
+);
+$bundleSrc = (string) file_get_contents($root . '/src/FyrstShopwareCdBundle.php');
+fyrst_assert(
+    str_contains($bundleSrc, 'Symfony\\Component\\HttpKernel\\Bundle\\Bundle'),
+    'bundle extends Bundle so Flex can auto-discover it'
+);
+fyrst_assert(
+    is_file($root . '/src/Command/RewriteSalesChannelUrlsCommand.php'),
+    'RewriteSalesChannelUrlsCommand.php is present'
+);
+$commandSrc = (string) file_get_contents($root . '/src/Command/RewriteSalesChannelUrlsCommand.php');
+fyrst_assert(
+    str_contains($commandSrc, 'fyrst:sales-channel:rewrite-urls'),
+    'command name is fyrst:sales-channel:rewrite-urls'
+);
+fyrst_assert(
+    ($composer['autoload']['psr-4']['Fyrst\\ShopwareCd\\'] ?? '') === 'src/',
+    'PSR-4 autoload Fyrst\\ShopwareCd\\ → src/'
+);
+fyrst_assert(
+    ($composer['extra']['symfony']['bundle']['Fyrst\\ShopwareCd\\FyrstShopwareCdBundle'] ?? null) === ['all'],
+    'extra.symfony.bundle registers FyrstShopwareCdBundle for all envs'
+);
+fyrst_assert(isset($composer['require']['symfony/console']), 'require.symfony/console is present');
+fyrst_assert(isset($composer['require']['doctrine/dbal']), 'require.doctrine/dbal is present');
+fyrst_assert(!isset($composer['extra']['shopware-plugin-class']), 'not a Shopware plugin (Symfony bundle)');
 fyrst_assert(!is_dir($root . '/scripts'), 'scripts/ create wrapper removed');
 fyrst_assert(!is_dir($root . '/overlay'), 'overlay/ not in this package');
 fyrst_assert(!is_dir($root . '/flex-recipe'), 'flex-recipe/ not in this package');
@@ -209,6 +238,26 @@ fyrst_assert(
 fyrst_assert(
     str_contains($readme, 'deploy/sync-runtime-local.sh'),
     'README names deploy/sync-runtime-local.sh as Flex overlay'
+);
+fyrst_assert(
+    str_contains($readme, 'fyrst:sales-channel:rewrite-urls'),
+    'README names fyrst:sales-channel:rewrite-urls'
+);
+fyrst_assert(
+    str_contains($readme, 'FyrstShopwareCdBundle'),
+    'README names FyrstShopwareCdBundle'
+);
+fyrst_assert(
+    str_contains($readme, 'composer update fyrst/shopware-cd'),
+    'README tells shops to composer update fyrst/shopware-cd'
+);
+fyrst_assert(
+    str_contains($readme, '--entrypoint php web bin/console fyrst:sales-channel:rewrite-urls'),
+    'README shows docker compose run --entrypoint php web bin/console'
+);
+fyrst_assert(
+    str_contains($readme, 'SYNC_ALLOW_LIVE_RESTORE=1'),
+    'README states SYNC_ALLOW_LIVE_RESTORE does not bypass rewrite refuse'
 );
 fyrst_assert(
     str_contains($readme, '**No S3.**'),
@@ -397,6 +446,10 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'deploy/sync-runtime-local.sh'),
     'CREATE.md names deploy/sync-runtime-local.sh as Flex overlay'
+);
+fyrst_assert(
+    str_contains($create, 'fyrst:sales-channel:rewrite-urls'),
+    'CREATE.md names fyrst:sales-channel:rewrite-urls'
 );
 fyrst_assert(
     str_contains($create, '**No S3.**'),
