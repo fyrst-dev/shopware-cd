@@ -4,9 +4,9 @@ Use with the locked process: [Shopware Create & Continuous Deploy](https://app.c
 
 **Default path is near-native Shopware:** `shopware-cli` + Flex endpoint + `composer require` + Symfony Flex + [fyrst-cli](https://github.com/fyrst-dev/cli) **0.1.0+**. No git submodule. No fyrst create/apply CLI in this package.
 
-This package (`fyrst/shopware-cd`) is a thin Packagist library. It ships Symfony bundle `FyrstShopwareCdBundle` and `bin/console fyrst:sales-channel:rewrite-urls`. It does **not** contain overlay files and does **not** own deploy/sync/backup pipeline logic. Flex loads CI, CD Compose under `deploy/`, and thin wrappers from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes); those wrappers `exec` fyrst-cli. **Dump stays `shopware-cli project dump`.** There is **no** Composer dependency on that recipes repo. Shops need `composer update fyrst/shopware-cd` for the command.
+This package (`fyrst/shopware-cd`) is a thin Packagist library. It ships Symfony bundle `FyrstShopwareCdBundle` and `bin/console fyrst:sales-channel:rewrite-urls`. It does **not** contain overlay files and does **not** own deploy/sync/backup pipeline logic. Flex loads CI, CD Compose under `deploy/`, and Flex wrappers from [`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes). Operator commands stay `bash deploy/…` (and the fyrst-cli equivalents). Flex wrappers are thin stubs around one dispatcher; filenames are stable. **Dump stays `shopware-cli project dump`.** There is **no** Composer dependency on that recipes repo. Shops need `composer update fyrst/shopware-cd` for the command.
 
-`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` is also accepted — do not rename), and local Docker. The fyrst Flex recipe does **not** copy those. Flex copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus thin wrappers `deploy/init-env.sh`, `deploy/vps-release.sh`, `deploy/vps-rollback.sh`, `deploy/sync-runtime.sh` for VPS, `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`, `deploy/backup-runtime.sh`). The Flex `env` configurator may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV=live`, `SHOPWARE_DATA_BASE=/var/lib/shopware/data`). It does **not** overwrite create’s whole `.env` and does not put secrets in that block.
+`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` is also accepted — do not rename), and local Docker. The fyrst Flex recipe does **not** copy those. Flex copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose plus Flex wrappers `deploy/init-env.sh`, `deploy/vps-release.sh`, `deploy/vps-rollback.sh`, `deploy/sync-runtime.sh` for VPS, `deploy/sync-runtime-local.sh` for local `shopware-cli project dev`, `deploy/backup-runtime.sh` — thin stubs around one dispatcher; filenames are stable). The Flex `env` configurator may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV=live`, `SHOPWARE_DATA_BASE=/var/lib/shopware/data`). It does **not** overwrite create’s whole `.env` and does not put secrets in that block.
 
 Shops **must** `composer require shopware/docker` on the same line as `fyrst/shopware-cd`. The image build file is always `docker/Dockerfile`.
 
@@ -22,7 +22,7 @@ cd <shop-name>
 composer config extra.symfony.allow-contrib true
 composer config --json extra.symfony.endpoint '["https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json","https://raw.githubusercontent.com/shopware/recipes/flex/main/index.json","flex://defaults"]'
 composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd
-# each VPS / laptop: fyrst-cli 0.1.0+ (wrappers exec it)
+# each VPS / laptop: fyrst-cli 0.1.0+ (wrapper stubs dispatch to it)
 curl -fsSL https://raw.githubusercontent.com/fyrst-dev/cli/main/scripts/install.sh | bash
 bash deploy/init-env.sh --shop-id <slug>
 # same as: fyrst-cli shopware env init --shop-id <slug>
@@ -36,8 +36,8 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] `extra.symfony.endpoint` is **fyrst-dev/recipes**, then shopware/recipes, then `flex://defaults` — set **before** `composer require`
 - [ ] Flex dropped `docker/Dockerfile` from `shopware/docker` (required; same `composer require` as `fyrst/shopware-cd`)
 - [ ] CI `DOCKERFILE=docker/Dockerfile` (or default to that). Do not add a shop-root `Dockerfile`.
-- [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, thin wrappers `deploy/init-env.sh`, `deploy/vps-release.sh`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh` that `exec` fyrst-cli 0.1.0+)
-- [ ] fyrst-cli **0.1.0+** is on `PATH` on each VPS and laptop (`scripts/install.sh`). Wrappers fail without it.
+- [ ] Flex copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, `.dockerignore`, `.env.example`, `deploy/` (`deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, Flex wrappers `deploy/init-env.sh`, `deploy/vps-release.sh`, `deploy/vps-rollback.sh`, `deploy/sync-runtime.sh`, `deploy/sync-runtime-local.sh`, `deploy/backup-runtime.sh` — thin stubs around one dispatcher; filenames are stable)
+- [ ] fyrst-cli **0.1.0+** is on `PATH` on each VPS and laptop (`scripts/install.sh`). Wrapper stubs fail without it.
 - [ ] VPS deploy uses `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`, not the CLI-managed root `compose.yaml`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] Flex may have appended a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id). It does **not** overwrite create’s whole `.env`. Ran `bash deploy/init-env.sh --shop-id <slug>` (`fyrst-cli shopware env init`; see `deploy/README.md`)
@@ -68,21 +68,21 @@ Fill placeholders — never commit values.
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
 - [ ] Planned only: managed host (`deploy/managed/README.md`) is **not implemented**. Do not set `DEPLOY_TARGET=managed` expecting a deploy.
 - [ ] **Live:** uncomment `COMPOSE_PROFILES=redis,worker,scheduler` in `.env` (worker + scheduler; redis if used). Leave unset on staging unless you need async/scheduled tasks. Release warns on live when empty; it does not auto-enable.
-- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `deploy/sync-runtime.sh` **on the consumer** (live → this env; execs `fyrst-cli shopware sync pull`). Uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Dump is `shopware-cli project dump`. Opt-in sales-channel rewrite: `SYNC_REWRITE_APP_URL` / `bin/console fyrst:sales-channel:rewrite-urls` after `composer update fyrst/shopware-cd` (default off; refused on live; `SYNC_ALLOW_LIVE_RESTORE=1` does not bypass). Review payment/shipping webhooks after a live pull. Never commit filled `deploy/sync.env`. Never auto-push into live. `deploy/init-env.sh` is a recipe wrapper for `fyrst-cli shopware env init` — it is not a console command in this package.
+- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `bash deploy/sync-runtime.sh` **on the consumer** (live → this env; same as `fyrst-cli shopware sync pull`). Uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Dump is `shopware-cli project dump`. Opt-in sales-channel rewrite: `SYNC_REWRITE_APP_URL` / `bin/console fyrst:sales-channel:rewrite-urls` after `composer update fyrst/shopware-cd` (default off; refused on live; `SYNC_ALLOW_LIVE_RESTORE=1` does not bypass). Review payment/shipping webhooks after a live pull. Never commit filled `deploy/sync.env`. Never auto-push into live. `deploy/init-env.sh` is a recipe wrapper stub (one dispatcher; filename is stable) for `fyrst-cli shopware env init` — it is not a console command in this package.
 - [ ] Optional: on a laptop, set `SHOPWARE_SHOP_ID` (same as live) and pull live media/files into `shopware-cli project dev` with `bash deploy/sync-runtime-local.sh --from live` (`fyrst-cli shopware sync local`; remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` → `files/` and `public/{media,thumbnail,theme,sitemap}`; `--data all` dropped). Do **not** use `deploy/sync-runtime.sh` locally.
 
 ## First pipeline
 
 - [ ] Push to GitHub and/or GitLab (`main`)
 - [ ] Build → push `:sha` (+ `:latest` on `main`) succeeds
-- [ ] Deploy job SSHs to the VPS, pulls, Compose up, one-shot setup
+- [ ] Deploy job SSHs to the VPS, then `bash ./deploy/vps-release.sh` (same as `fyrst-cli shopware deploy release`): pull, Compose up, one-shot setup
 - [ ] Storefront + admin + health/smoke URL verified
 - [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` (Compose/sync derive that; `SHOPWARE_DATA_ROOT` is optional); live → staging/playground/dev uses `deploy/sync-runtime.sh` → fyrst-cli (shop id + deploy env). Local `shopware-cli project dev` uses `deploy/sync-runtime-local.sh` → `fyrst-cli shopware sync local` (remote auto from `SHOPWARE_SHOP_ID` + `live`).
 
 ## Anti-patterns (do not)
 
 - [ ] Do not add a fyrst create wrapper or git submodule
-- [ ] Do not skip fyrst-cli 0.1.0+ on the VPS or laptop (recipe wrappers `exec` it)
+- [ ] Do not skip fyrst-cli 0.1.0+ on the VPS or laptop (recipe wrapper stubs dispatch to it)
 - [ ] Do not dump with fyrst-cli or the wrappers (dump stays `shopware-cli project dump`)
 - [ ] Do not expect this PHP package to own deploy/sync/backup pipeline logic
 - [ ] Do not skip the fyrst-dev/recipes endpoint before `composer require` (Flex copies nothing)

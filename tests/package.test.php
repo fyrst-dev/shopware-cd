@@ -281,8 +281,18 @@ fyrst_assert(
     'README pins fyrst-cli 0.1.0'
 );
 fyrst_assert(
-    str_contains($readme, 'exec') && str_contains($readme, 'thin wrapper'),
-    'README states recipe wrappers exec fyrst-cli'
+    str_contains($readme, 'thin stubs around one dispatcher')
+        && str_contains($readme, 'filenames are stable'),
+    'README states Flex wrappers are thin stubs around one dispatcher; filenames are stable'
+);
+fyrst_assert(
+    str_contains($readme, 'Operator commands stay `bash deploy/…`'),
+    'README keeps operator commands as bash deploy/…'
+);
+fyrst_assert(
+    str_contains($readme, 'bash ./deploy/vps-release.sh')
+        || str_contains($readme, 'bash deploy/vps-release.sh'),
+    'README still lists bash deploy/vps-release.sh'
 );
 fyrst_assert(
     !str_contains($readme, 'Overlay bash currently rewrites via SQL'),
@@ -497,8 +507,18 @@ fyrst_assert(
     'CREATE.md states dump stays shopware-cli project dump'
 );
 fyrst_assert(
-    str_contains($create, 'exec') && str_contains($create, 'thin wrapper'),
-    'CREATE.md states recipe wrappers exec fyrst-cli'
+    str_contains($create, 'thin stubs around one dispatcher')
+        && str_contains($create, 'filenames are stable'),
+    'CREATE.md states Flex wrappers are thin stubs around one dispatcher; filenames are stable'
+);
+fyrst_assert(
+    str_contains($create, 'Operator commands stay `bash deploy/…`'),
+    'CREATE.md keeps operator commands as bash deploy/…'
+);
+fyrst_assert(
+    str_contains($create, 'bash ./deploy/vps-release.sh')
+        || str_contains($create, 'bash deploy/vps-release.sh'),
+    'CREATE.md still lists bash deploy/vps-release.sh'
 );
 fyrst_assert(
     str_contains($create, 'SHOPWARE_DATA_ROOT'),
