@@ -264,8 +264,33 @@ fyrst_assert(
     'README states VPS runtime sync does not use S3'
 );
 fyrst_assert(
-    str_contains($readme, 'SSH + `mysqldump`'),
+    str_contains($readme, 'shopware-cli project dump'),
+    'README states dump stays shopware-cli project dump'
+);
+fyrst_assert(
+    str_contains($readme, 'SSH + `shopware-cli project dump`')
+        || str_contains($readme, 'SSH + dump'),
     'README states runtime sync is SSH + dump'
+);
+fyrst_assert(
+    str_contains($readme, 'fyrst-cli'),
+    'README names fyrst-cli as the operator CLI'
+);
+fyrst_assert(
+    str_contains($readme, '0.1.0'),
+    'README pins fyrst-cli 0.1.0'
+);
+fyrst_assert(
+    str_contains($readme, 'exec') && str_contains($readme, 'thin wrapper'),
+    'README states recipe wrappers exec fyrst-cli'
+);
+fyrst_assert(
+    !str_contains($readme, 'Overlay bash currently rewrites via SQL'),
+    'README does not describe overlay bash SQL rewrite as the operator path'
+);
+fyrst_assert(
+    !str_contains($readme, 'companion recipes PR'),
+    'README does not wait on a companion recipes PR for rewrite'
 );
 fyrst_assert(
     str_contains($readme, 'rsync of those host dirs'),
@@ -460,6 +485,22 @@ fyrst_assert(
     'CREATE.md states runtime sync is SSH + dump + rsync of host dirs'
 );
 fyrst_assert(
+    str_contains($create, 'fyrst-cli'),
+    'CREATE.md names fyrst-cli as the operator CLI'
+);
+fyrst_assert(
+    str_contains($create, '0.1.0'),
+    'CREATE.md pins fyrst-cli 0.1.0'
+);
+fyrst_assert(
+    str_contains($create, 'shopware-cli project dump'),
+    'CREATE.md states dump stays shopware-cli project dump'
+);
+fyrst_assert(
+    str_contains($create, 'exec') && str_contains($create, 'thin wrapper'),
+    'CREATE.md states recipe wrappers exec fyrst-cli'
+);
+fyrst_assert(
     str_contains($create, 'SHOPWARE_DATA_ROOT'),
     'CREATE.md names SHOPWARE_DATA_ROOT for VPS bind mounts'
 );
@@ -588,6 +629,10 @@ fyrst_assert(
     'README links P0–P2 recipes epics'
 );
 
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'fyrst-cli'),
+    'description names fyrst-cli as the operator CLI'
+);
 fyrst_assert(
     str_contains((string) ($composer['description'] ?? ''), 'owned by shopware-cli'),
     'description states shopware-cli owns root compose.yaml'
