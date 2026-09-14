@@ -40,6 +40,7 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] VPS deploy uses `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`, not the CLI-managed root `compose.yaml`
 - [ ] Copied overlay files **committed** in the shop (`vendor/` is gitignored)
 - [ ] Flex may have appended a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id). It does **not** overwrite create’s whole `.env`. Ran `fyrst-cli shopware env init --shop-id <slug>` (see `deploy/README.md`)
+- [ ] Shop files: fyrst-cli loads `.env`, then `.env.local` if present (laptop SSH / extras), then `.env.prod` if present (VPS). Later file wins. Identity keys cannot be overridden by later files. Same loader for every `fyrst-cli shopware` verb. CI `VPS_*` / `SSH_PRIVATE_KEY` stay secrets — they are not shop `.env`.
 - [ ] Identity (locked hybrid): required `SHOPWARE_SHOP_ID` (stable shop slug, same on live/staging/laptop) + `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …). Optional `SHOPWARE_DATA_BASE`. `COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional** — Docker Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `SHOPWARE_DATA_ROOT=${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`. Compose uses those SoT vars directly. Do not hardcode Compose project name `shopware`.
 - [ ] VPS `.env` does **not** keep create’s `COMPOSE_PROJECT_NAME=sw-shop-…` line (that **overrides** Compose `name:`). Comment it out with `fyrst-cli shopware env init --vps` (or by hand). Flex does not delete it on `composer require` (create owns local `project dev`).
 - [ ] Same-host tag-and-load / air-gap: `PULL_POLICY=never` and `SKIP_PULL=1` (or `fyrst-cli shopware deploy release --skip-pull`). Default `pull_policy` is `always` after CI pushed the tag.
@@ -59,16 +60,20 @@ Fill placeholders — never commit values.
 - [ ] CI: registry login (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or platform defaults)
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
-- [ ] Runtime: `APP_URL`, `APP_SECRET`, `DATABASE_URL`
+- [ ] Runtime (`.env` / `.env.local` / `.env.prod`): `APP_URL`, `APP_SECRET`, `DATABASE_URL`. Rewrite uses `APP_URL` only
 - [ ] Runtime: `SHOPWARE_SHOP_ID` (stable shop slug) — **required** (`fyrst-cli shopware env init --shop-id <slug>`)
 - [ ] Runtime: `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …) — **required**
 - [ ] Optional: `SHOPWARE_DATA_BASE` (prefix `/var/lib/shopware/data` when unset)
 - [ ] Optional: `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` — Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` when unset. Compose uses those SoT vars directly. Do **not** leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` on the VPS.
+- [ ] Laptop extras: `.env.local` with `SHOPWARE_SSH_HOST` / `SHOPWARE_SSH_USER` / `SHOPWARE_SSH_KEY` (host defaults to alias `live` when unset)
+- [ ] VPS extras: `.env.prod` when the VPS needs values that are not in `.env`
+- [ ] Optional: `SHOPWARE_REMOTE_DATA_ROOT` if live data is not `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`
+- [ ] Live restore gate: `SHOPWARE_ALLOW_LIVE_RESTORE` (plus `--allow-live`) for `sync apply` / `backup recover`
 - [ ] Runtime: `INSTALL_ADMIN_USERNAME` / `INSTALL_ADMIN_PASSWORD` / `INSTALL_ADMIN_EMAIL` (first install only)
 - [ ] Planned only: managed host (`deploy/managed/README.md`) is **not implemented**. Do not set `DEPLOY_TARGET=managed` expecting a deploy.
 - [ ] **Live:** uncomment `COMPOSE_PROFILES=redis,worker,scheduler` in `.env` (worker + scheduler; redis if used). Leave unset on staging unless you need async/scheduled tasks. Release warns on live when empty; it does not auto-enable.
-- [ ] Optional: on staging/playground/dev, copy `deploy/sync.env.example` → `deploy/sync.env` (`SYNC_SSH_*` to live, `SYNC_ENV` = this env). Cron `fyrst-cli shopware sync pull` **on the consumer** (live → this env). Uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SYNC_REMOTE_DATA_ROOT` override. Dump is `shopware-cli project dump`. Opt-in sales-channel rewrite: `SYNC_REWRITE_APP_URL` / `bin/console fyrst:sales-channel:rewrite-urls` after `composer update fyrst/shopware-cd` (default off; refused on live; `SYNC_ALLOW_LIVE_RESTORE=1` does not bypass). Review payment/shipping webhooks after a live pull. Never commit filled `deploy/sync.env`. Never auto-push into live. `fyrst-cli shopware env init` is not a console command in this package.
-- [ ] Optional: on a laptop, set `SHOPWARE_SHOP_ID` (same as live) and pull live media/files into `shopware-cli project dev` with `fyrst-cli shopware sync local --from live` (remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` → `files/` and `public/{media,thumbnail,theme,sitemap}`; fyrst-cli refuses `--data all`). Do **not** use VPS `fyrst-cli shopware sync pull` locally.
+- [ ] Optional: on staging/playground/dev, set identity + `APP_URL` in shop-root `.env` / `.env.prod`. Cron `fyrst-cli shopware sync pull` **on the consumer** (live → this env). Uses shop id + deploy env (source default: same shop id + `live`) unless `SHOPWARE_DATA_ROOT` / `SHOPWARE_REMOTE_DATA_ROOT` override. Dump is `shopware-cli project dump`. Sales-channel rewrite uses `APP_URL` / `bin/console fyrst:sales-channel:rewrite-urls` after `composer update fyrst/shopware-cd` (refused on live; `SHOPWARE_ALLOW_LIVE_RESTORE=1` does not bypass). Review payment/shipping webhooks after a live pull. Never commit filled `.env` / `.env.local` / `.env.prod`. Never auto-push into live. `fyrst-cli shopware env init` is not a console command in this package.
+- [ ] Optional: on a laptop, set `SHOPWARE_SHOP_ID` in `.env` (same as live) and `SHOPWARE_SSH_*` in `.env.local`, then pull live media/files into `shopware-cli project dev` with `fyrst-cli shopware sync local --from live` (remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live` → `files/` and `public/{media,thumbnail,theme,sitemap}`; fyrst-cli refuses `--data all`). Do **not** use VPS `fyrst-cli shopware sync pull` locally.
 
 ## First pipeline
 

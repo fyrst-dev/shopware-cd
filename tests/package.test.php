@@ -255,8 +255,28 @@ fyrst_assert(
     'README shows docker compose run --entrypoint php web bin/console'
 );
 fyrst_assert(
-    str_contains($readme, 'SYNC_ALLOW_LIVE_RESTORE=1'),
-    'README states SYNC_ALLOW_LIVE_RESTORE does not bypass rewrite refuse'
+    str_contains($readme, 'SHOPWARE_ALLOW_LIVE_RESTORE=1'),
+    'README states SHOPWARE_ALLOW_LIVE_RESTORE does not bypass rewrite refuse'
+);
+fyrst_assert(
+    str_contains($readme, 'Rewrite uses `APP_URL`'),
+    'README rewrite target is APP_URL'
+);
+fyrst_assert(
+    str_contains($readme, '`.env.local`'),
+    'README documents shop-root .env.local'
+);
+fyrst_assert(
+    str_contains($readme, '`.env.prod`'),
+    'README documents shop-root .env.prod'
+);
+fyrst_assert(
+    str_contains($readme, 'SHOPWARE_SSH_HOST'),
+    'README documents SHOPWARE_SSH_HOST'
+);
+fyrst_assert(
+    str_contains($readme, 'SHOPWARE_REMOTE_DATA_ROOT'),
+    'README documents SHOPWARE_REMOTE_DATA_ROOT'
 );
 fyrst_assert(
     str_contains($readme, '**No S3.**'),
@@ -487,6 +507,30 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'fyrst:sales-channel:rewrite-urls'),
     'CREATE.md names fyrst:sales-channel:rewrite-urls'
+);
+fyrst_assert(
+    str_contains($create, 'Rewrite uses `APP_URL`'),
+    'CREATE.md rewrite target is APP_URL'
+);
+fyrst_assert(
+    str_contains($create, '`.env.local`'),
+    'CREATE.md documents shop-root .env.local'
+);
+fyrst_assert(
+    str_contains($create, '`.env.prod`'),
+    'CREATE.md documents shop-root .env.prod'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_SSH_HOST'),
+    'CREATE.md documents SHOPWARE_SSH_HOST'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_REMOTE_DATA_ROOT'),
+    'CREATE.md documents SHOPWARE_REMOTE_DATA_ROOT'
+);
+fyrst_assert(
+    str_contains($create, 'SHOPWARE_ALLOW_LIVE_RESTORE=1'),
+    'CREATE.md states SHOPWARE_ALLOW_LIVE_RESTORE does not bypass rewrite refuse'
 );
 fyrst_assert(
     str_contains($create, '**No S3.**'),
@@ -720,6 +764,21 @@ foreach (['README.md' => $readme, 'CREATE.md' => $create] as $name => $text) {
     fyrst_assert(
         !str_contains($text, 'set explicitly in `.env`'),
         "{$name} does not require expanded COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT in .env"
+    );
+    fyrst_assert(
+        !str_contains($text, 'deploy/sync.env')
+            && !str_contains($text, 'sync.env.example'),
+        "{$name} does not document deploy/sync.env"
+    );
+    fyrst_assert(
+        !str_contains($text, 'SYNC_APP_URL')
+            && !str_contains($text, 'SYNC_SSH_')
+            && !str_contains($text, 'SYNC_ENV')
+            && !str_contains($text, 'SYNC_REWRITE_')
+            && !str_contains($text, 'SYNC_REMOTE_DATA_ROOT')
+            && !str_contains($text, 'SYNC_ALLOW_LIVE_RESTORE')
+            && !str_contains($text, 'SYNC_DATA_ROOT'),
+        "{$name} has no SYNC_* tables or leftover SYNC_* names"
     );
 
     preg_match_all('#/var/lib/shopware/data(?:/[^\s`\'")]+)?#', $text, $dataRoots);
