@@ -191,17 +191,16 @@ fyrst_assert(
     'README warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
 );
 fyrst_assert(
-    str_contains($readme, 'deploy/init-env.sh'),
-    'README names deploy/init-env.sh'
+    str_contains($readme, 'fyrst-cli shopware env init'),
+    'README operator path is fyrst-cli shopware env init'
 );
 fyrst_assert(
     str_contains($readme, '###> fyrst/shopware-cd ###'),
     'README documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($readme, 'init-env.sh --vps')
-        || str_contains($readme, 'bash deploy/init-env.sh --vps'),
-    'README documents init-env.sh --vps'
+    str_contains($readme, 'fyrst-cli shopware env init --vps'),
+    'README documents fyrst-cli shopware env init --vps'
 );
 fyrst_assert(
     str_contains($readme, 'does **not** overwrite create’s whole `.env`'),
@@ -232,12 +231,12 @@ fyrst_assert(
     'README names deploy/compose.vps.yaml'
 );
 fyrst_assert(
-    str_contains($readme, 'deploy/sync-runtime.sh'),
-    'README names deploy/sync-runtime.sh as Flex overlay'
+    str_contains($readme, 'fyrst-cli shopware sync'),
+    'README operator path is fyrst-cli shopware sync'
 );
 fyrst_assert(
-    str_contains($readme, 'deploy/sync-runtime-local.sh'),
-    'README names deploy/sync-runtime-local.sh as Flex overlay'
+    str_contains($readme, 'fyrst-cli shopware sync local'),
+    'README operator path is fyrst-cli shopware sync local'
 );
 fyrst_assert(
     str_contains($readme, 'fyrst:sales-channel:rewrite-urls'),
@@ -281,18 +280,22 @@ fyrst_assert(
     'README pins fyrst-cli 0.1.0'
 );
 fyrst_assert(
-    str_contains($readme, 'thin stubs around one dispatcher')
-        && str_contains($readme, 'filenames are stable'),
-    'README states Flex wrappers are thin stubs around one dispatcher; filenames are stable'
+    str_contains($readme, 'fyrst-cli shopware deploy release'),
+    'README operator path is fyrst-cli shopware deploy release'
 );
 fyrst_assert(
-    str_contains($readme, 'Operator commands stay `bash deploy/…`'),
-    'README keeps operator commands as bash deploy/…'
+    str_contains($readme, '0.1.0+') && str_contains($readme, 'each VPS'),
+    'README requires fyrst-cli 0.1.0+ on each VPS'
 );
 fyrst_assert(
-    str_contains($readme, 'bash ./deploy/vps-release.sh')
-        || str_contains($readme, 'bash deploy/vps-release.sh'),
-    'README still lists bash deploy/vps-release.sh'
+    !str_contains($readme, 'bash deploy/')
+        && !str_contains($readme, 'bash ./deploy/'),
+    'README does not list bash deploy/*.sh as the operator path'
+);
+fyrst_assert(
+    !str_contains($readme, 'thin stubs around one dispatcher')
+        && !str_contains($readme, 'Operator commands stay `bash deploy/…`'),
+    'README does not keep Phase 1 dispatcher/wrapper operator wording'
 );
 fyrst_assert(
     !str_contains($readme, 'Overlay bash currently rewrites via SQL'),
@@ -304,7 +307,7 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($readme, 'rsync of those host dirs'),
-    'README states deploy/sync-runtime.sh rsyncs SHOPWARE_DATA_ROOT host dirs'
+    'README states fyrst-cli shopware sync rsyncs SHOPWARE_DATA_ROOT host dirs'
 );
 fyrst_assert(
     str_contains($readme, 'SHOPWARE_DATA_ROOT'),
@@ -353,11 +356,11 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($readme, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live'),
-    'README auto-derives sync-runtime-local remote path from SHOPWARE_SHOP_ID + live'
+    'README auto-derives sync local remote path from SHOPWARE_SHOP_ID + live'
 );
 fyrst_assert(
     str_contains($readme, 'paths from shop id + deploy env') || str_contains($readme, 'Paths use **shop id + deploy env**'),
-    'README states deploy/sync-runtime.sh uses shop id + deploy env'
+    'README states fyrst-cli shopware sync uses shop id + deploy env'
 );
 fyrst_assert(
     str_contains($readme, 'No hardcoded Compose project name `shopware`')
@@ -413,12 +416,12 @@ fyrst_assert(
     'README names shopware-cli project dev as the local consumer'
 );
 fyrst_assert(
-    str_contains($readme, 'This script is **not** for local `shopware-cli project dev`'),
-    'README states deploy/sync-runtime.sh is not for local project dev'
+    str_contains($readme, 'is **not** for local `shopware-cli project dev`'),
+    'README states VPS sync is not for local project dev'
 );
 fyrst_assert(
-    str_contains($readme, 'Do **not** run `deploy/sync-runtime.sh` on a laptop'),
-    'README forbids VPS sync script on a laptop'
+    str_contains($readme, 'Do **not** run `fyrst-cli shopware sync {capture|apply|pull}` on a laptop'),
+    'README forbids VPS fyrst-cli shopware sync on a laptop'
 );
 fyrst_assert(
     str_contains($readme, 'does **not** use the CLI-managed root `compose.yaml`'),
@@ -450,17 +453,16 @@ fyrst_assert(
     'CREATE.md warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
 );
 fyrst_assert(
-    str_contains($create, 'deploy/init-env.sh'),
-    'CREATE.md names deploy/init-env.sh'
+    str_contains($create, 'fyrst-cli shopware env init'),
+    'CREATE.md operator path is fyrst-cli shopware env init'
 );
 fyrst_assert(
     str_contains($create, '###> fyrst/shopware-cd ###'),
     'CREATE.md documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($create, 'init-env.sh --vps')
-        || str_contains($create, 'bash deploy/init-env.sh --vps'),
-    'CREATE.md documents init-env.sh --vps'
+    str_contains($create, 'fyrst-cli shopware env init --vps'),
+    'CREATE.md documents fyrst-cli shopware env init --vps'
 );
 fyrst_assert(
     str_contains($create, 'does **not** overwrite create’s whole `.env`'),
@@ -475,12 +477,12 @@ fyrst_assert(
     'CREATE.md names deploy/compose.yaml'
 );
 fyrst_assert(
-    str_contains($create, 'deploy/sync-runtime.sh'),
-    'CREATE.md names deploy/sync-runtime.sh as Flex overlay'
+    str_contains($create, 'fyrst-cli shopware sync'),
+    'CREATE.md operator path is fyrst-cli shopware sync'
 );
 fyrst_assert(
-    str_contains($create, 'deploy/sync-runtime-local.sh'),
-    'CREATE.md names deploy/sync-runtime-local.sh as Flex overlay'
+    str_contains($create, 'fyrst-cli shopware sync local'),
+    'CREATE.md operator path is fyrst-cli shopware sync local'
 );
 fyrst_assert(
     str_contains($create, 'fyrst:sales-channel:rewrite-urls'),
@@ -507,18 +509,22 @@ fyrst_assert(
     'CREATE.md states dump stays shopware-cli project dump'
 );
 fyrst_assert(
-    str_contains($create, 'thin stubs around one dispatcher')
-        && str_contains($create, 'filenames are stable'),
-    'CREATE.md states Flex wrappers are thin stubs around one dispatcher; filenames are stable'
+    str_contains($create, 'fyrst-cli shopware deploy release'),
+    'CREATE.md operator path is fyrst-cli shopware deploy release'
 );
 fyrst_assert(
-    str_contains($create, 'Operator commands stay `bash deploy/…`'),
-    'CREATE.md keeps operator commands as bash deploy/…'
+    str_contains($create, '0.1.0+') && str_contains($create, 'each VPS'),
+    'CREATE.md requires fyrst-cli 0.1.0+ on each VPS'
 );
 fyrst_assert(
-    str_contains($create, 'bash ./deploy/vps-release.sh')
-        || str_contains($create, 'bash deploy/vps-release.sh'),
-    'CREATE.md still lists bash deploy/vps-release.sh'
+    !str_contains($create, 'bash deploy/')
+        && !str_contains($create, 'bash ./deploy/'),
+    'CREATE.md does not list bash deploy/*.sh as the operator path'
+);
+fyrst_assert(
+    !str_contains($create, 'thin stubs around one dispatcher')
+        && !str_contains($create, 'Operator commands stay `bash deploy/…`'),
+    'CREATE.md does not keep Phase 1 dispatcher/wrapper operator wording'
 );
 fyrst_assert(
     str_contains($create, 'SHOPWARE_DATA_ROOT'),
@@ -562,12 +568,12 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($create, '/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live'),
-    'CREATE.md auto-derives sync-runtime-local remote path from SHOPWARE_SHOP_ID + live'
+    'CREATE.md auto-derives sync local remote path from SHOPWARE_SHOP_ID + live'
 );
 fyrst_assert(
     str_contains($create, 'paths from shop id + deploy env')
         || str_contains($create, 'shop id + deploy env'),
-    'CREATE.md states deploy/sync-runtime.sh uses shop id + deploy env'
+    'CREATE.md states fyrst-cli shopware sync uses shop id + deploy env'
 );
 fyrst_assert(
     str_contains($create, 'do not hardcode `shopware`')
@@ -619,8 +625,8 @@ fyrst_assert(
     'CREATE.md names shopware-cli project dev as the local consumer'
 );
 fyrst_assert(
-    str_contains($create, 'Do **not** use `deploy/sync-runtime.sh` locally'),
-    'CREATE.md forbids VPS sync script on a laptop'
+    str_contains($create, 'Do **not** use VPS `fyrst-cli shopware sync pull` locally'),
+    'CREATE.md forbids VPS fyrst-cli shopware sync on a laptop'
 );
 fyrst_assert(
     str_contains($create, 'not the CLI-managed root `compose.yaml`'),
