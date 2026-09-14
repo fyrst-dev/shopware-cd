@@ -1,6 +1,6 @@
 {
     "name": "fyrst/shopware-cd",
-    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Provides fyrst:sales-channel:rewrite-urls (sales_channel_domain.url after a non-live DB restore). Overlay files (CI, deploy Compose, .env.example, thin wrappers) are served by Symfony Flex from fyrst-dev/recipes, not this package. Operators use fyrst-cli 0.1.0+ (wrappers exec it). Dump stays shopware-cli. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
+    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Provides fyrst:sales-channel:rewrite-urls (sales_channel_domain.url after a non-live DB restore). Overlay files (CI, deploy Compose, .env.example) are served by Symfony Flex from fyrst-dev/recipes, not this package. Operators use fyrst-cli 0.1.0+ only. Dump stays shopware-cli. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
     "license": "MIT",
     "type": "library",
     "keywords": [
