@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Smoke tests for the thin Packagist package (no Flex overlay copies here).
+ * Smoke tests for the thin Packagist package (overlay/ is Flex copy-from-package).
  */
 
 $root = dirname(__DIR__);
@@ -33,8 +33,8 @@ fyrst_assert(
     'homepage is fyrst-dev/shopware-cd'
 );
 fyrst_assert(
-    ($composer['support']['docs'] ?? '') === 'https://github.com/fyrst-dev/recipes',
-    'support.docs points at fyrst-dev/recipes'
+    ($composer['support']['docs'] ?? '') === 'https://github.com/fyrst-dev/shopware-cd',
+    'support.docs points at fyrst-dev/shopware-cd'
 );
 fyrst_assert(
     ($composer['support']['source'] ?? '') === 'https://github.com/fyrst-dev/shopware-cd',
@@ -47,6 +47,14 @@ fyrst_assert(
 fyrst_assert(
     str_contains((string) ($composer['description'] ?? ''), 'fyrst-dev/recipes'),
     'description mentions fyrst-dev/recipes'
+);
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'overlay/'),
+    'description says overlay/ ships in this package'
+);
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'copy-from-package'),
+    'description names Flex copy-from-package'
 );
 fyrst_assert(
     str_contains((string) ($composer['description'] ?? ''), 'docker/Dockerfile'),
@@ -106,22 +114,142 @@ fyrst_assert(isset($composer['require']['symfony/console']), 'require.symfony/co
 fyrst_assert(isset($composer['require']['doctrine/dbal']), 'require.doctrine/dbal is present');
 fyrst_assert(!isset($composer['extra']['shopware-plugin-class']), 'not a Shopware plugin (Symfony bundle)');
 fyrst_assert(!is_dir($root . '/scripts'), 'scripts/ create wrapper removed');
-fyrst_assert(!is_dir($root . '/overlay'), 'overlay/ not in this package');
+fyrst_assert(is_dir($root . '/overlay'), 'overlay/ is the Flex copy-from-package source');
 fyrst_assert(!is_dir($root . '/flex-recipe'), 'flex-recipe/ not in this package');
+$gitattributes = is_file($root . '/.gitattributes')
+    ? (string) file_get_contents($root . '/.gitattributes')
+    : '';
+fyrst_assert(
+    !preg_match('/^overlay\\/?\\s+export-ignore/m', $gitattributes),
+    'overlay/ is not export-ignored from the Composer dist'
+);
+$overlayFiles = [
+    '.dockerignore',
+    '.env.example',
+    '.github/workflows/cd.yaml',
+    '.gitlab-ci.yaml',
+    'deploy/.gitignore',
+    'deploy/README.md',
+    'deploy/backup-runtime.md',
+    'deploy/compose.yaml',
+    'deploy/compose.prod.yaml',
+    'deploy/compose.vps.yaml',
+    'deploy/managed/README.md',
+    'deploy/sync-runtime.md',
+    'deploy/edge/Caddyfile',
+    'deploy/edge/README.md',
+];
+foreach ($overlayFiles as $rel) {
+    fyrst_assert(is_file($root . '/overlay/' . $rel), 'overlay/' . $rel . ' is present');
+}
+$forbiddenOverlay = [
+    'deploy/init-env.sh',
+    'deploy/vps-release.sh',
+    'deploy/vps-rollback.sh',
+    'deploy/sync-runtime.sh',
+    'deploy/sync-runtime-local.sh',
+    'deploy/backup-runtime.sh',
+    'deploy/sync.env.example',
+    'deploy/backup.env.example',
+    'compose.yaml',
+    '.gitignore',
+    '.shopware-project.yml',
+    '.shopware-project.yaml',
+    'Dockerfile',
+    'docker/Dockerfile',
+];
+foreach ($forbiddenOverlay as $rel) {
+    fyrst_assert(!file_exists($root . '/overlay/' . $rel), 'overlay/' . $rel . ' is not shipped');
+}
+fyrst_assert(!is_dir($root . '/overlay/deploy/lib'), 'overlay/deploy/lib is not shipped');
+$overlaySh = [];
+$overlayIter = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($root . '/overlay', FilesystemIterator::SKIP_DOTS)
+);
+foreach ($overlayIter as $fileInfo) {
+    if ($fileInfo->isFile() && str_ends_with($fileInfo->getFilename(), '.sh')) {
+        $overlaySh[] = substr($fileInfo->getPathname(), strlen($root) + 1);
+    }
+}
+fyrst_assert($overlaySh === [], 'overlay/ has no bash wrappers: ' . implode(', ', $overlaySh));
+fyrst_assert(
+    is_file($root . '/.github/workflows/ci.yml'),
+    'package CI stays at .github/workflows/ci.yml'
+);
+$packageCi = (string) file_get_contents($root . '/.github/workflows/ci.yml');
+fyrst_assert(
+    str_contains($packageCi, 'Package') && str_contains($packageCi, 'php tests/package.test.php'),
+    'package CI still runs library tests only'
+);
 fyrst_assert(is_file($root . '/LICENSE'), 'LICENSE file present');
 fyrst_assert(is_file($root . '/README.md'), 'README.md present');
 fyrst_assert(is_file($root . '/CREATE.md'), 'CREATE.md present');
 fyrst_assert(!is_file($root . '/.github/workflows/cd.yml'), 'shop CD is not at package .github');
 fyrst_assert(!is_file($root . '/.github/workflows/cd.yaml'), 'shop CD yaml is not at package .github');
-fyrst_assert(!is_file($root . '/.gitlab-ci.yaml'), 'shop GitLab CI is not in this package');
+fyrst_assert(!is_file($root . '/.gitlab-ci.yaml'), 'shop GitLab CI is not at package root');
+$overlayExample = (string) file_get_contents($root . '/overlay/.env.example');
+foreach ([
+    'SHOPWARE_SSH_HOST=',
+    'SHOPWARE_SSH_USER=',
+    'SHOPWARE_SSH_KEY=',
+    'SHOPWARE_REMOTE_DATA_ROOT=',
+    'BACKUP_TARGET=local',
+    'BACKUP_KEEP_DAYS=14',
+    'BACKUP_DB_DUMP=',
+    'SHOPWARE_ALLOW_LIVE_RESTORE=1',
+] as $needle) {
+    fyrst_assert(
+        str_contains($overlayExample, $needle),
+        'overlay/.env.example comments ' . $needle
+    );
+}
+$deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
+fyrst_assert(
+    (bool) preg_match('/^\\*\\.env$/m', $deployGitignore),
+    'overlay/deploy/.gitignore keeps leftover *.env out of git'
+);
+$deployReadme = (string) file_get_contents($root . '/overlay/deploy/README.md');
+fyrst_assert(
+    str_contains($deployReadme, 'fyrst-cli shopware sync pull --from live --data all')
+        && str_contains($deployReadme, 'fyrst-cli shopware backup create')
+        && !str_contains($deployReadme, 'bash ./deploy/vps-release.sh')
+        && !str_contains($deployReadme, 'bash deploy/sync-runtime.sh'),
+    'overlay/deploy/README.md uses fyrst-cli lifecycle verbs, not bash wrappers'
+);
+foreach (['overlay/.github/workflows/cd.yaml', 'overlay/.gitlab-ci.yaml'] as $rel) {
+    $ci = (string) file_get_contents($root . '/' . $rel);
+    fyrst_assert(
+        !str_contains($ci, 'bash ./deploy/vps-release.sh'),
+        $rel . ' does not invoke bash ./deploy/vps-release.sh'
+    );
+    fyrst_assert(
+        str_contains($ci, 'fyrst-cli shopware deploy release')
+            && str_contains($ci, 'IMAGE=')
+            && str_contains($ci, 'IMAGE_TAG=')
+            && str_contains($ci, 'COMPOSE_DIR='),
+        $rel . ' SSH step uses fyrst-cli + IMAGE / IMAGE_TAG / COMPOSE_DIR'
+    );
+    fyrst_assert(
+        str_contains($ci, 'fyrst-cli 0.1.0'),
+        $rel . ' comments require fyrst-cli 0.1.0+'
+    );
+}
 fyrst_assert(!is_file($root . '/compose.yaml'), 'shop compose.yaml is not in this package');
 fyrst_assert(!is_file($root . '/Dockerfile'), 'shop-root Dockerfile is not in this package');
 fyrst_assert(!is_file($root . '/docker/Dockerfile'), 'shop docker/Dockerfile is not in this package');
 
 $readme = (string) file_get_contents($root . '/README.md');
 fyrst_assert(
-    str_contains($readme, 'does **not** contain overlay files'),
-    'README states this package does not contain overlay files'
+    !str_contains($readme, 'does **not** contain overlay files'),
+    'README no longer says this package does not contain overlay files'
+);
+fyrst_assert(
+    str_contains($readme, 'copy-from-package'),
+    'README names Flex copy-from-package'
+);
+fyrst_assert(
+    str_contains($readme, '`overlay/`'),
+    'README names overlay/ as the shop file source'
 );
 fyrst_assert(
     str_contains($readme, 'https://raw.githubusercontent.com/fyrst-dev/recipes/flex/main/index.json'),
@@ -158,8 +286,24 @@ fyrst_assert(
 
 $create = (string) file_get_contents($root . '/CREATE.md');
 fyrst_assert(
-    str_contains($create, 'does **not** contain overlay files'),
-    'CREATE.md states this package does not contain overlay files'
+    !str_contains($create, 'does **not** contain overlay files'),
+    'CREATE.md no longer says this package does not contain overlay files'
+);
+fyrst_assert(
+    str_contains($create, 'copy-from-package'),
+    'CREATE.md names Flex copy-from-package'
+);
+fyrst_assert(
+    str_contains($create, '`overlay/`'),
+    'CREATE.md names overlay/ as the shop file source'
+);
+fyrst_assert(
+    str_contains($readme, 'Do not keep a second `root/` copy'),
+    'README forbids a second recipe root/ overlay'
+);
+fyrst_assert(
+    str_contains($create, 'Do not keep a second copy in fyrst-dev/recipes `root/`'),
+    'CREATE.md forbids a second recipe root/ overlay'
 );
 fyrst_assert(
     str_contains($create, 'docker/Dockerfile'),
