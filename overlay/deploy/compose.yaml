@@ -6,9 +6,8 @@
 # file's `name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` with host env
 # files loaded. Pass --env-file .env then .env.local then .env.prod (if
 # present) — the compose file lives under deploy/, so Compose's default
-# `.env` lookup would be deploy/.env. fyrst-cli keeps -p only as a matching
-# pin. Raw Compose must use those same --env-file flags (omit a flag if
-# that host file is missing).
+# `.env` lookup would be deploy/.env. Raw Compose must use those same
+# --env-file flags (omit a flag if that host file is missing).
 #   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml ...
 #
 # Production overrides: deploy/compose.prod.yaml
@@ -33,7 +32,7 @@
 # SHOPWARE_DEPLOY_ENV + COMPOSE_PROJECT_NAME=<shop-id>-<env> in host
 # .env.local / .env.prod. VPS Compose naming SoT is this `name:` with those
 # host env files loaded (--env-file .env then .env.local then .env.prod if
-# present). fyrst-cli keeps -p only as a matching pin. Local and VPS use
+# present). Local and VPS use
 # ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} (acme-dev / acme-live) — not
 # folder basename, not shopware-<shop-id>.
 # env init sets gitignored compose.override.yaml `name:` for
@@ -43,8 +42,7 @@
 # three separate interpolations concatenated with /.
 #
 # VPS stack name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
-# via this `name:` (SoT) with host env files loaded. fyrst-cli keeps `-p`
-# only as a matching pin (matches COMPOSE_PROJECT_NAME in .env.local).
+# via this `name:` (SoT) with host env files loaded.
 # Named volumes mysql_data / redis_data on the VPS are prefixed by
 # ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
 # (acme-live_mysql_data vs acme-staging_mysql_data).

@@ -23,9 +23,8 @@
 # project name — not folder basename, not shopware-<shop-id>.
 # VPS Compose naming SoT is deploy/compose.yaml
 # name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} with host env files loaded.
-# fyrst-cli passes --env-file .env then .env.local then .env.prod (if present)
-# and keeps -p only as a matching pin. Raw Compose must use those same
-# --env-file flags.
+# fyrst-cli passes --env-file .env then .env.local then .env.prod (if present).
+# Raw Compose must use those same --env-file flags.
 # SHOPWARE_DATA_ROOT is an optional script/docs override (fyrst-cli derives
 # it when unset; if set, it prefers it). Do not set COMPOSE_PROJECT_NAME
 # (including empty) in shared `.env`.
@@ -136,8 +135,8 @@ create’s `COMPOSE_PROJECT_NAME=sw-shop-…` from shared `.env`, writes
    ```
 
    Compose project name is `acme-live` (VPS SoT: `deploy/compose.yaml` `name:`
-   with host env files loaded; `-p` only as a matching pin; same formula as
-   local `acme-dev`). Bind-mount root is
+   with host env files loaded; same formula as local `acme-dev`). Bind-mount
+   root is
    `/var/lib/shopware/data/acme/live`. `SHOPWARE_DATA_ROOT` stays optional.
    fyrst-cli still derives that expanded string when unset (and prefers it
    when set) for logs and tools.
@@ -227,7 +226,7 @@ docker compose --env-file .env --env-file .env.local --env-file .env.prod -f dep
 - `deploy/compose.yaml` — CD/VPS image-based stack
 - `deploy/compose.prod.yaml` — production overrides
 - `deploy/compose.vps.yaml` — `pull_policy: ${PULL_POLICY:-always}` (CI/VPS default). Same-host tag-and-load / air-gap: `PULL_POLICY=never` and `SKIP_PULL=1` (or `fyrst-cli shopware deploy release --skip-pull`) so Compose does not pull a tag that was never pushed.
-`fyrst-cli shopware deploy release` loads shop-root identity (shared `.env`, then `.env.local`, then `.env.prod`; shop id + env required), passes `--env-file .env` then `.env.local` then `.env.prod` (if present), and keeps `-p` only as a matching pin of `deploy/compose.yaml` `name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`. Raw Compose must use those same `--env-file` flags. Then it derives `SHOPWARE_DATA_ROOT` when unset and runs that command from `COMPOSE_DIR` (shop root).
+`fyrst-cli shopware deploy release` loads shop-root identity (shared `.env`, then `.env.local`, then `.env.prod`; shop id + env required) and passes `--env-file .env` then `.env.local` then `.env.prod` (if present). VPS Compose naming SoT is `deploy/compose.yaml` `name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`. Raw Compose must use those same `--env-file` flags. Then it derives `SHOPWARE_DATA_ROOT` when unset and runs that command from `COMPOSE_DIR` (shop root).
 
 Local development uses `shopware-cli project create`'s shop-root `compose.yaml` with `shopware-cli project dev`. env init sets gitignored `compose.override.yaml` `name:` (`<shop-id>-<env>`). This recipe does not copy those files. Create writes `.shopware-project.yml` (fine as-is; shopware-cli also accepts `.yaml` — do not rename).
 
