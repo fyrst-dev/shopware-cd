@@ -25,22 +25,23 @@
 #   scheduler  — scheduled-task:run
 #
 # Source of truth: SHOPWARE_SHOP_ID + SHOPWARE_DEPLOY_ENV in shop-root .env.
-# Compose interpolates project name and bind-mount paths from those two (plus
-# optional SHOPWARE_DATA_BASE). COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT are
-# not required here — leave them unset unless a script/tool needs the expanded
-# strings. Nested defaults like ${ROOT:-/base/${SHOP_ID}/...} do not expand
-# in Compose; these are three separate interpolations concatenated with /.
+# Compose interpolates bind-mount paths from those two (plus optional
+# SHOPWARE_DATA_BASE). Nested defaults like ${ROOT:-/base/${SHOP_ID}/...} do
+# not expand in Compose; these are three separate interpolations concatenated
+# with /.
 #
-# Project name (unique on this Docker host):
-#   ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}   e.g. acme-live
-# Scopes named volumes mysql_data / redis_data
-# (acme-live_mysql_data vs acme-staging_mysql_data).
-# Do not hardcode `name: shopware` (collides when several shops/envs share a host).
+# File-level name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
+# After fyrst-cli shopware env init --shop-id <slug>, .env has
+# COMPOSE_PROJECT_NAME=shopware-<slug> (e.g. shopware-acme). That env var
+# overrides name: so local shopware-cli project dev and VPS
+# docker compose --env-file .env share a stable project name.
+# Named volumes mysql_data / redis_data are prefixed by the active name
+# (shopware-acme_mysql_data).
+# Do not hardcode a bare project name `shopware` (use `shopware-<shop-id>`).
 # Do not set COMPOSE_PROJECT_NAME= (empty) in .env — that env var overrides name:.
-# shopware-cli project create writes COMPOSE_PROJECT_NAME=sw-shop-… into .env
-# for local `project dev`. That value also overrides name:. fyrst-cli shopware
-# env init always comments out that line so Compose uses shop id + deploy env.
-# This recipe does not delete it on composer require (run env init).
+# shopware-cli project create writes COMPOSE_PROJECT_NAME=sw-shop-… into .env.
+# env init sets COMPOSE_PROJECT_NAME=shopware-<shop-id> (replaces create's sw-shop-… line).
+# This recipe does not set it on composer require (run env init).
 #
 # Runtime uploads are bind mounts (not named volumes):
 #   ${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}

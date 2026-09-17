@@ -211,9 +211,10 @@ fyrst_assert(
     'overlay/.env.example documents env init identity flags without --vps'
 );
 fyrst_assert(
-    str_contains($overlayExample, 'always comments out create')
-        && str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=sw-shop'),
-    'overlay/.env.example documents env init always-strip of create COMPOSE_PROJECT_NAME'
+    str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=shopware-')
+        && str_contains($overlayExample, 'sets COMPOSE_PROJECT_NAME=shopware-<slug>')
+        && !str_contains($overlayExample, 'always comments out'),
+    'overlay/.env.example documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
 );
 fyrst_assert(
     str_contains($overlayExample, 'APP_SECRET='),
@@ -229,6 +230,13 @@ fyrst_assert(
     !str_contains($overlayExample, 'generate-app-secret')
         && !str_contains($overlayExample, 'openssl rand'),
     'overlay/.env.example does not generate APP_SECRET'
+);
+$composeYaml = (string) file_get_contents($root . '/overlay/deploy/compose.yaml');
+fyrst_assert(
+    str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
+        && str_contains($composeYaml, 'overrides name:')
+        && !str_contains($composeYaml, 'always comments out'),
+    'overlay/deploy/compose.yaml documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
 );
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
@@ -251,10 +259,11 @@ fyrst_assert(
     'overlay/deploy/README.md documents env init identity / IMAGE / --dry-run without --vps'
 );
 fyrst_assert(
-    str_contains($deployReadme, 'always comments out create')
-        && str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=sw-shop')
+    str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=shopware-')
+        && str_contains($deployReadme, 'sets `COMPOSE_PROJECT_NAME=shopware-<shop-id>`')
+        && !str_contains($deployReadme, 'always comments out')
         && !str_contains($deployReadme, 'can keep it'),
-    'overlay/deploy/README.md documents env init always-strip; laptop does not keep create COMPOSE_PROJECT_NAME'
+    'overlay/deploy/README.md documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $deployReadme)
@@ -383,7 +392,7 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop'),
-    'README warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
+    'README mentions create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
 );
 fyrst_assert(
     str_contains($readme, 'fyrst-cli shopware env init'),
@@ -394,10 +403,11 @@ fyrst_assert(
     'README documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($readme, 'always comments out create')
-        && str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop')
+    str_contains($readme, 'sets `COMPOSE_PROJECT_NAME=shopware-<slug>`')
+        && str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-')
+        && !str_contains($readme, 'always comments out')
         && !str_contains($readme, '--vps'),
-    'README documents env init always-strip of create COMPOSE_PROJECT_NAME without --vps'
+    'README documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id> without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $readme)
@@ -550,21 +560,25 @@ fyrst_assert(
     'README names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($readme, 'COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}'),
-    'README sets COMPOSE_PROJECT_NAME from shop id + deploy env'
+    str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-${SHOPWARE_SHOP_ID}')
+        || str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-<slug>')
+        || str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-<shop-id>'),
+    'README sets COMPOSE_PROJECT_NAME to shopware-<shop-id>'
 );
 fyrst_assert(
-    str_contains($readme, '`COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**'),
-    'README marks COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT as optional'
+    str_contains($readme, '`SHOPWARE_DATA_ROOT` stays optional')
+        || str_contains($readme, 'Optional `SHOPWARE_DATA_ROOT`')
+        || str_contains($readme, '`SHOPWARE_DATA_ROOT` is **optional**'),
+    'README marks SHOPWARE_DATA_ROOT as optional'
 );
 fyrst_assert(
     str_contains($readme, 'SHOPWARE_DATA_BASE'),
     'README names optional SHOPWARE_DATA_BASE'
 );
 fyrst_assert(
-    str_contains($readme, 'Compose uses those SoT vars directly')
+    str_contains($readme, 'Compose interpolates bind-mount paths from those SoT vars directly')
         || str_contains($readme, 'interpolates `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV`, and `SHOPWARE_DATA_BASE` **directly**'),
-    'README states Compose uses SHOPWARE_SHOP_ID / SHOPWARE_DEPLOY_ENV / SHOPWARE_DATA_BASE directly'
+    'README states Compose interpolates SHOPWARE_SHOP_ID / SHOPWARE_DEPLOY_ENV / SHOPWARE_DATA_BASE directly'
 );
 fyrst_assert(
     !str_contains($readme, 'set explicitly in `.env`'),
@@ -591,9 +605,10 @@ fyrst_assert(
     'README states fyrst-cli shopware sync uses shop id + deploy env'
 );
 fyrst_assert(
-    str_contains($readme, 'No hardcoded Compose project name `shopware`')
-        || str_contains($readme, 'Hardcoding Compose project name `shopware`'),
-    'README forbids hardcoded Compose project name shopware'
+    str_contains($readme, 'No bare Compose project name `shopware`')
+        || str_contains($readme, 'Hardcoding a bare Compose project name `shopware`')
+        || str_contains($readme, 'bare Compose project name `shopware`'),
+    'README forbids a bare Compose project name shopware'
 );
 fyrst_assert(
     !preg_match('#/var/lib/shopware/data/\{files#', $readme),
@@ -678,7 +693,7 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop'),
-    'CREATE.md warns about create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
+    'CREATE.md mentions create’s COMPOSE_PROJECT_NAME=sw-shop-… line'
 );
 fyrst_assert(
     str_contains($create, 'fyrst-cli shopware env init'),
@@ -689,10 +704,11 @@ fyrst_assert(
     'CREATE.md documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($create, 'always comments out create')
-        && str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop')
+    str_contains($create, 'sets `COMPOSE_PROJECT_NAME=shopware-<slug>`')
+        && str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-')
+        && !str_contains($create, 'always comments out')
         && !str_contains($create, '--vps'),
-    'CREATE.md documents env init always-strip of create COMPOSE_PROJECT_NAME without --vps'
+    'CREATE.md documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id> without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $create)
@@ -799,20 +815,23 @@ fyrst_assert(
     'CREATE.md names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($create, 'COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}'),
-    'CREATE.md sets COMPOSE_PROJECT_NAME from shop id + deploy env'
+    str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-<slug>')
+        || str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-<shop-id>'),
+    'CREATE.md sets COMPOSE_PROJECT_NAME to shopware-<shop-id>'
 );
 fyrst_assert(
-    str_contains($create, '`COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**'),
-    'CREATE.md marks COMPOSE_PROJECT_NAME and SHOPWARE_DATA_ROOT as optional'
+    str_contains($create, '`SHOPWARE_DATA_ROOT` is **optional**')
+        || str_contains($create, 'Optional: `SHOPWARE_DATA_ROOT`'),
+    'CREATE.md marks SHOPWARE_DATA_ROOT as optional'
 );
 fyrst_assert(
     str_contains($create, 'SHOPWARE_DATA_BASE'),
     'CREATE.md names optional SHOPWARE_DATA_BASE'
 );
 fyrst_assert(
-    str_contains($create, 'Compose uses those SoT vars directly'),
-    'CREATE.md states Compose uses SoT vars directly'
+    str_contains($create, 'Compose interpolates bind-mount paths from those SoT vars directly')
+        || str_contains($create, 'Compose interpolates bind-mount paths from the SoT vars directly'),
+    'CREATE.md states Compose interpolates SoT vars directly'
 );
 fyrst_assert(
     !str_contains($create, 'set explicitly in `.env`'),
@@ -836,9 +855,9 @@ fyrst_assert(
     'CREATE.md states fyrst-cli shopware sync uses shop id + deploy env'
 );
 fyrst_assert(
-    str_contains($create, 'do not hardcode `shopware`')
-        || str_contains($create, 'Do not hardcode Compose project name `shopware`'),
-    'CREATE.md forbids hardcoded Compose project name shopware'
+    str_contains($create, 'Do not hardcode a bare Compose project name `shopware`')
+        || str_contains($create, 'bare Compose project name `shopware`'),
+    'CREATE.md forbids a bare Compose project name shopware'
 );
 fyrst_assert(
     !preg_match('#/var/lib/shopware/data/\{files#', $create),
@@ -975,8 +994,13 @@ foreach ([
         "{$name} has no --vps flag"
     );
     fyrst_assert(
-        str_contains($text, 'always comments out'),
-        "{$name} documents env init always-strip of COMPOSE_PROJECT_NAME"
+        !str_contains($text, 'always comments out')
+            && !str_contains($text, 'always-strip'),
+        "{$name} does not document env init as commenting out COMPOSE_PROJECT_NAME"
+    );
+    fyrst_assert(
+        str_contains($text, 'COMPOSE_PROJECT_NAME=shopware-'),
+        "{$name} documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>"
     );
 }
 

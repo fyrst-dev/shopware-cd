@@ -43,7 +43,7 @@ docker run -d --name shopware-edge --network host --restart unless-stopped \
 
 ## Several shops / live+staging on one VPS
 
-Each stack has its own `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV` and a unique `HTTP_PORT` (and Compose project name). Host-based routing, not path-based:
+Each stack has its own `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV` and a unique `HTTP_PORT`. After env init the Compose project name is `shopware-<shop-id>` (shared by live and staging of the same shop). Host-based routing, not path-based:
 
 ```caddyfile
 # live  — SHOPWARE_SHOP_ID=acme SHOPWARE_DEPLOY_ENV=live  HTTP_PORT=8000
