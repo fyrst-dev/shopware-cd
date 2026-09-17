@@ -234,9 +234,11 @@ fyrst_assert(
 $composeYaml = (string) file_get_contents($root . '/overlay/deploy/compose.yaml');
 fyrst_assert(
     str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
-        && str_contains($composeYaml, 'overrides name:')
+        && str_contains($composeYaml, 'pins VPS compose')
+        && str_contains($composeYaml, 'does not override')
+        && str_contains($composeYaml, 'for local project dev')
         && !str_contains($composeYaml, 'always comments out'),
-    'overlay/deploy/compose.yaml documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
+    'overlay/deploy/compose.yaml documents local shopware-<shop-id> and pinned VPS name:'
 );
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
@@ -1001,6 +1003,22 @@ foreach ([
     fyrst_assert(
         str_contains($text, 'COMPOSE_PROJECT_NAME=shopware-'),
         "{$name} documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>"
+    );
+    fyrst_assert(
+        str_contains($text, 'VPS Compose project remains')
+            && (str_contains($text, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
+                || str_contains($text, 'acme-live')),
+        "{$name} keeps VPS Compose project as shop-id + deploy env"
+    );
+    fyrst_assert(
+        str_contains($text, 'for local')
+            || str_contains($text, 'local `shopware-cli project dev`')
+            || str_contains($text, 'local project dev'),
+        "{$name} scopes COMPOSE_PROJECT_NAME=shopware-<shop-id> to local project dev"
+    );
+    fyrst_assert(
+        !str_contains($text, 'share a stable project name'),
+        "{$name} does not say local and VPS share COMPOSE_PROJECT_NAME"
     );
 }
 

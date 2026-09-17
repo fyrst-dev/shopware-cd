@@ -30,17 +30,19 @@
 # not expand in Compose; these are three separate interpolations concatenated
 # with /.
 #
-# File-level name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
-# After fyrst-cli shopware env init --shop-id <slug>, .env has
-# COMPOSE_PROJECT_NAME=shopware-<slug> (e.g. shopware-acme). That env var
-# overrides name: so local shopware-cli project dev and VPS
-# docker compose --env-file .env share a stable project name.
-# Named volumes mysql_data / redis_data are prefixed by the active name
-# (shopware-acme_mysql_data).
-# Do not hardcode a bare project name `shopware` (use `shopware-<shop-id>`).
-# Do not set COMPOSE_PROJECT_NAME= (empty) in .env — that env var overrides name:.
-# shopware-cli project create writes COMPOSE_PROJECT_NAME=sw-shop-… into .env.
-# env init sets COMPOSE_PROJECT_NAME=shopware-<shop-id> (replaces create's sw-shop-… line).
+# VPS project name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
+# fyrst-cli pins VPS compose so .env COMPOSE_PROJECT_NAME does not override
+# this name:. Local shopware-cli project dev uses
+# COMPOSE_PROJECT_NAME=shopware-<slug> from env init (e.g. shopware-acme).
+# Named volumes mysql_data / redis_data on the VPS are prefixed by
+# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
+# (acme-live_mysql_data vs acme-staging_mysql_data).
+# Do not hardcode `name: shopware` (bare). Local pattern is shopware-<shop-id>;
+# VPS remains <shop-id>-<env>.
+# Do not set COMPOSE_PROJECT_NAME= (empty) in .env — that env var would
+# override local root compose. shopware-cli project create writes
+# COMPOSE_PROJECT_NAME=sw-shop-… into .env. env init sets
+# COMPOSE_PROJECT_NAME=shopware-<shop-id> for local project dev.
 # This recipe does not set it on composer require (run env init).
 #
 # Runtime uploads are bind mounts (not named volumes):
