@@ -157,6 +157,7 @@ $forbiddenOverlay = [
     '.shopware-project.yaml',
     'Dockerfile',
     'docker/Dockerfile',
+    'compose.override.yaml',
 ];
 foreach ($forbiddenOverlay as $rel) {
     fyrst_assert(!file_exists($root . '/overlay/' . $rel), 'overlay/' . $rel . ' is not shipped');
@@ -212,11 +213,13 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($overlayExample, 'strips')
-        && str_contains($overlayExample, 'COMPOSE_PROJECT_NAME')
+        && str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+        && str_contains($overlayExample, 'compose.override.yaml')
+        && str_contains($overlayExample, 'acme-dev')
         && str_contains($overlayExample, '.env.local')
         && !str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($overlayExample, 'always comments out'),
-    'overlay/.env.example documents env init strips COMPOSE_PROJECT_NAME and writes SHOPWARE_DEPLOY_ENV to .env.local'
+    'overlay/.env.example documents strip + host COMPOSE_PROJECT_NAME=<shop-id>-<env> + compose.override.yaml'
 );
 fyrst_assert(
     !preg_match('/^SHOPWARE_DEPLOY_ENV=live\s*$/m', $overlayExample),
@@ -241,12 +244,15 @@ $composeYaml = (string) file_get_contents($root . '/overlay/deploy/compose.yaml'
 fyrst_assert(
     str_contains($composeYaml, 'strips')
         && str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+        && str_contains($composeYaml, 'compose.override.yaml')
+        && str_contains($composeYaml, 'acme-dev')
         && str_contains($composeYaml, 'fyrst-cli `-p`')
         && str_contains($composeYaml, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
         && !str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($composeYaml, 'pins VPS compose')
         && !str_contains($composeYaml, 'always comments out'),
-    'overlay/deploy/compose.yaml documents strip + VPS name: / -p from identity'
+    'overlay/deploy/compose.yaml documents strip + unified <shop-id>-<env> name: / -p'
 );
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
@@ -270,13 +276,15 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($deployReadme, 'strips')
-        && str_contains($deployReadme, 'COMPOSE_PROJECT_NAME')
+        && str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+        && str_contains($deployReadme, 'compose.override.yaml')
+        && str_contains($deployReadme, 'acme-dev')
         && str_contains($deployReadme, '.env.local')
         && str_contains($deployReadme, 'fyrst-cli `-p`')
         && !str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($deployReadme, 'always comments out')
         && !str_contains($deployReadme, 'can keep it'),
-    'overlay/deploy/README.md documents env init strips COMPOSE_PROJECT_NAME and host .env.local'
+    'overlay/deploy/README.md documents strip + host COMPOSE_PROJECT_NAME + compose.override.yaml'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $deployReadme)
@@ -418,11 +426,14 @@ fyrst_assert(
 fyrst_assert(
     str_contains($readme, 'strips')
         && str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($readme, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+        && str_contains($readme, 'compose.override.yaml')
+        && str_contains($readme, 'acme-dev')
         && str_contains($readme, '.env.local')
         && !str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($readme, 'always comments out')
         && !str_contains($readme, '--vps'),
-    'README documents env init strips COMPOSE_PROJECT_NAME without --vps'
+    'README documents env init strip + host COMPOSE_PROJECT_NAME=<shop-id>-<env> without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $readme)
@@ -576,9 +587,11 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($readme, 'fyrst-cli `-p`')
+        && str_contains($readme, 'acme-dev')
+        && str_contains($readme, 'acme-live')
         && (str_contains($readme, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
-            || str_contains($readme, 'acme-live')),
-    'README names VPS stack via name: / -p as shop-id + deploy env'
+            || str_contains($readme, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')),
+    'README names local and VPS Compose project as shop-id + deploy env'
 );
 fyrst_assert(
     str_contains($readme, '`SHOPWARE_DATA_ROOT` stays optional')
@@ -721,11 +734,14 @@ fyrst_assert(
 fyrst_assert(
     str_contains($create, 'strips')
         && str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($create, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+        && str_contains($create, 'compose.override.yaml')
+        && str_contains($create, 'acme-dev')
         && str_contains($create, '.env.local')
         && !str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($create, 'always comments out')
         && !str_contains($create, '--vps'),
-    'CREATE.md documents env init strips COMPOSE_PROJECT_NAME without --vps'
+    'CREATE.md documents env init strip + host COMPOSE_PROJECT_NAME=<shop-id>-<env> without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $create)
@@ -833,9 +849,11 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($create, 'fyrst-cli `-p`')
+        && str_contains($create, 'acme-dev')
+        && str_contains($create, 'acme-live')
         && (str_contains($create, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
-            || str_contains($create, 'acme-live')),
-    'CREATE.md names VPS stack via name: / -p as shop-id + deploy env'
+            || str_contains($create, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')),
+    'CREATE.md names local and VPS Compose project as shop-id + deploy env'
 );
 fyrst_assert(
     str_contains($create, '`SHOPWARE_DATA_ROOT` is **optional**')
@@ -1024,7 +1042,23 @@ foreach ([
     fyrst_assert(
         !str_contains($text, 'COMPOSE_PROJECT_NAME=shopware-')
             && !str_contains($text, 'sets `COMPOSE_PROJECT_NAME='),
-        "{$name} does not set COMPOSE_PROJECT_NAME in shared .env"
+        "{$name} does not set COMPOSE_PROJECT_NAME=shopware-… in shared .env"
+    );
+    fyrst_assert(
+        str_contains($text, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
+            && str_contains($text, '.env.local'),
+        "{$name} writes COMPOSE_PROJECT_NAME=<shop-id>-<env> to host .env.local"
+    );
+    fyrst_assert(
+        str_contains($text, 'compose.override.yaml')
+            && str_contains($text, 'name:'),
+        "{$name} documents env init compose.override.yaml name: for project dev"
+    );
+    fyrst_assert(
+        str_contains($text, 'acme-dev')
+            && str_contains($text, 'acme-live')
+            && str_contains($text, 'folder basename'),
+        "{$name} uses <shop-id>-<env> for local and VPS, not folder basename"
     );
     fyrst_assert(
         str_contains($text, 'SHOPWARE_DEPLOY_ENV')
@@ -1032,11 +1066,9 @@ foreach ([
         "{$name} writes SHOPWARE_DEPLOY_ENV to host .env.local"
     );
     fyrst_assert(
-        (str_contains($text, 'VPS stack name remains')
-            || str_contains($text, 'VPS Compose project remains'))
-            && (str_contains($text, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
-                || str_contains($text, 'acme-live')),
-        "{$name} keeps VPS stack name as shop-id + deploy env"
+        str_contains($text, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
+            || str_contains($text, 'acme-live'),
+        "{$name} keeps Compose project name as shop-id + deploy env"
     );
     fyrst_assert(
         str_contains($text, 'fyrst-cli `-p`'),
