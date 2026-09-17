@@ -6,7 +6,7 @@ Use with the locked process: [Shopware Create & Continuous Deploy](https://app.c
 
 This package (`fyrst/shopware-cd`) is a thin Packagist library. It ships Symfony bundle `FyrstShopwareCdBundle`, `bin/console fyrst:sales-channel:rewrite-urls`, and shop overlay files under `overlay/` (Flex `copy-from-package` copies them into the shop). It does **not** own deploy/sync/backup pipeline logic. Operator commands are `fyrst-cli shopware …` only. Recipe `deploy/*.sh` wrappers are removed. **Dump stays `shopware-cli project dump`.** The Flex recipe ([`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes)) is metadata only — there is **no** Composer dependency on that recipes repo. Shops need `composer update fyrst/shopware-cd` for the command and for overlay bytes.
 
-`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` is also accepted — do not rename), and local Docker. The fyrst Flex recipe does **not** copy those. Flex `copy-from-package` copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`) from this package’s `overlay/`. It does **not** copy `deploy/*.sh` wrappers. The Flex `env` configurator may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV=live`, `SHOPWARE_DATA_BASE=/var/lib/shopware/data`). It does **not** overwrite create’s whole `.env` and does not put secrets in that block.
+`shopware-cli project create` owns `compose.yaml`, `.gitignore`, `.shopware-project.yml` (create’s default; `.yaml` is also accepted — do not rename), and local Docker. The fyrst Flex recipe does **not** copy those. Flex `copy-from-package` copies CI, `.dockerignore`, `.env.example`, and `deploy/` (CD Compose `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`) from this package’s `overlay/`. It does **not** copy `deploy/*.sh` wrappers. The Flex `env` configurator may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV=live`, `SHOPWARE_DATA_BASE=/var/lib/shopware/data`). It does **not** overwrite create’s whole `.env` and does not put secrets in that block. Then run `fyrst-cli shopware env init --shop-id <slug>`. That command does not generate `APP_SECRET` (`shopware-cli project create` already writes it).
 
 Shops **must** `composer require shopware/docker` on the same line as `fyrst/shopware-cd`. The image build file is always `docker/Dockerfile`.
 
@@ -60,7 +60,7 @@ Fill placeholders — never commit values.
 - [ ] CI: registry login (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or platform defaults)
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
-- [ ] Runtime (`.env` / `.env.local` / `.env.prod`): `APP_URL`, `APP_SECRET`, `DATABASE_URL`. Rewrite uses `APP_URL` only
+- [ ] Runtime (`.env` / `.env.local` / `.env.prod`): `APP_URL`, `APP_SECRET`, `DATABASE_URL`. Rewrite uses `APP_URL` only. `APP_SECRET` comes from `shopware-cli project create`; `fyrst-cli shopware env init` does not generate it.
 - [ ] Runtime: `SHOPWARE_SHOP_ID` (stable shop slug) — **required** (`fyrst-cli shopware env init --shop-id <slug>`)
 - [ ] Runtime: `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …) — **required**
 - [ ] Optional: `SHOPWARE_DATA_BASE` (prefix `/var/lib/shopware/data` when unset)

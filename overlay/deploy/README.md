@@ -86,9 +86,6 @@ fyrst-cli shopware env init --shop-id acme
 # VPS: set identity, optional IMAGE, comment out create's COMPOSE_PROJECT_NAME
 fyrst-cli shopware env init --shop-id acme --env live --vps --image ghcr.io/fyrst-dev/shop-name
 
-# optional: APP_SECRET only if empty
-fyrst-cli shopware env init --shop-id acme --generate-app-secret
-
 # preview
 fyrst-cli shopware env init --shop-id acme --vps --dry-run
 ```
@@ -98,7 +95,8 @@ fyrst-cli shopware env init --shop-id acme --vps --dry-run
 unset/empty; an existing non-empty value is kept). The command copies
 `.env.example` → `.env` when `.env` is missing, then merges **missing** keys
 from `.env.example` without clobbering existing non-empty values. It does
-**not** invent `MYSQL_*` passwords or `APP_URL`.
+**not** invent `MYSQL_*` passwords or `APP_URL`. It does **not** generate
+`APP_SECRET` (`shopware-cli project create` already writes it).
 
 ## One-time VPS bootstrap
 
