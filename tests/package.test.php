@@ -203,6 +203,28 @@ foreach ([
         'overlay/.env.example comments ' . $needle
     );
 }
+fyrst_assert(
+    str_contains($overlayExample, '--shop-id')
+        && str_contains($overlayExample, '--vps')
+        && str_contains($overlayExample, '--image')
+        && str_contains($overlayExample, '--dry-run'),
+    'overlay/.env.example documents env init identity flags'
+);
+fyrst_assert(
+    str_contains($overlayExample, 'APP_SECRET='),
+    'overlay/.env.example still lists APP_SECRET as a Shopware key'
+);
+fyrst_assert(
+    (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $overlayExample)
+        && str_contains($overlayExample, 'shopware-cli project create')
+        && str_contains($overlayExample, 'already writes it'),
+    'overlay/.env.example says env init does not generate APP_SECRET'
+);
+fyrst_assert(
+    !str_contains($overlayExample, 'generate-app-secret')
+        && !str_contains($overlayExample, 'openssl rand'),
+    'overlay/.env.example does not generate APP_SECRET'
+);
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
     (bool) preg_match('/^\\*\\.env$/m', $deployGitignore),
@@ -215,6 +237,24 @@ fyrst_assert(
         && !str_contains($deployReadme, 'bash ./deploy/vps-release.sh')
         && !str_contains($deployReadme, 'bash deploy/sync-runtime.sh'),
     'overlay/deploy/README.md uses fyrst-cli lifecycle verbs, not bash wrappers'
+);
+fyrst_assert(
+    str_contains($deployReadme, 'fyrst-cli shopware env init --shop-id acme')
+        && str_contains($deployReadme, '--vps')
+        && str_contains($deployReadme, '--image')
+        && str_contains($deployReadme, '--dry-run'),
+    'overlay/deploy/README.md documents env init identity / IMAGE / --vps / --dry-run'
+);
+fyrst_assert(
+    (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $deployReadme)
+        && str_contains($deployReadme, 'shopware-cli project create')
+        && str_contains($deployReadme, 'already writes it'),
+    'overlay/deploy/README.md says env init does not generate APP_SECRET'
+);
+fyrst_assert(
+    !str_contains($deployReadme, 'generate-app-secret')
+        && !str_contains($deployReadme, 'openssl rand'),
+    'overlay/deploy/README.md does not mention --generate-app-secret'
 );
 foreach (['overlay/.github/workflows/cd.yaml', 'overlay/.gitlab-ci.yaml'] as $rel) {
     $ci = (string) file_get_contents($root . '/' . $rel);
@@ -345,6 +385,17 @@ fyrst_assert(
 fyrst_assert(
     str_contains($readme, 'fyrst-cli shopware env init --vps'),
     'README documents fyrst-cli shopware env init --vps'
+);
+fyrst_assert(
+    (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $readme)
+        && str_contains($readme, 'shopware-cli project create')
+        && str_contains($readme, 'already writes it'),
+    'README says env init does not generate APP_SECRET'
+);
+fyrst_assert(
+    str_contains($readme, 'optional `IMAGE`')
+        && !str_contains($readme, 'optional `IMAGE` / `APP_SECRET`'),
+    'README env init fills optional IMAGE, not APP_SECRET'
 );
 fyrst_assert(
     str_contains($readme, 'does **not** overwrite create’s whole `.env`'),
@@ -629,6 +680,12 @@ fyrst_assert(
     'CREATE.md documents fyrst-cli shopware env init --vps'
 );
 fyrst_assert(
+    (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $create)
+        && str_contains($create, 'shopware-cli project create')
+        && str_contains($create, 'already writes it'),
+    'CREATE.md says env init does not generate APP_SECRET'
+);
+fyrst_assert(
     str_contains($create, 'does **not** overwrite create’s whole `.env`'),
     'CREATE.md states Flex does not overwrite create’s whole .env'
 );
@@ -881,6 +938,22 @@ foreach ($docs as $name => $text) {
     fyrst_assert(
         !preg_match('/Flex (loads|copied|copies) CI, Compose/', $text),
         "{$name} does not say Flex copies Compose at shop root"
+    );
+}
+
+foreach ([
+    'README.md' => $readme,
+    'CREATE.md' => $create,
+    'overlay/.env.example' => $overlayExample,
+    'overlay/deploy/README.md' => $deployReadme,
+] as $name => $text) {
+    fyrst_assert(
+        !str_contains($text, 'generate-app-secret'),
+        "{$name} does not mention --generate-app-secret"
+    );
+    fyrst_assert(
+        !str_contains($text, 'openssl rand'),
+        "{$name} does not openssl-generate APP_SECRET"
     );
 }
 

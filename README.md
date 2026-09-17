@@ -6,7 +6,7 @@ This repository is **not** a Shopware installation. It does not vendor Shopware 
 
 **Operator path:** [fyrst-cli](https://github.com/fyrst-dev/cli) **0.1.0+** only. Install it on each VPS and laptop. Recipe `deploy/*.sh` wrappers are removed — CI and operators call `fyrst-cli shopware …` only. **Dump stays `shopware-cli project dump` forever** — fyrst-cli never dumps.
 
-Shop overlay files live in this package under [`overlay/`](overlay/). **Symfony Flex** `copy-from-package` copies CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose: `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, plus edge/managed docs) from `vendor/fyrst/shopware-cd/overlay/` into the shop. It does **not** copy `deploy/*.sh` wrappers, and it does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (create writes `.shopware-project.yml`; `.yaml` is also accepted — do not rename). Flex `env` may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id; no secrets). It does **not** overwrite create’s whole `.env`. Then run `fyrst-cli shopware env init --shop-id <slug>`. The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package. Each VPS and laptop needs fyrst-cli 0.1.0+ on `PATH`. The Flex recipe ([`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes), later recipes-contrib) is metadata only (`copy-from-package` + `bundles` + `env` + post-install toast) — not a second overlay source.
+Shop overlay files live in this package under [`overlay/`](overlay/). **Symfony Flex** `copy-from-package` copies CI (`.github/workflows/cd.yaml`, `.gitlab-ci.yaml`), `.dockerignore`, `.env.example`, and `deploy/` (CD Compose: `deploy/compose.yaml`, `deploy/compose.prod.yaml`, `deploy/compose.vps.yaml`, plus edge/managed docs) from `vendor/fyrst/shopware-cd/overlay/` into the shop. It does **not** copy `deploy/*.sh` wrappers, and it does **not** copy `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` — `shopware-cli project create` owns those (create writes `.shopware-project.yml`; `.yaml` is also accepted — do not rename). Flex `env` may **append** a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id; no secrets). It does **not** overwrite create’s whole `.env`. Then run `fyrst-cli shopware env init --shop-id <slug>`. That command does not generate `APP_SECRET` (`shopware-cli project create` already writes it). The image build file is always [`shopware/docker`](https://github.com/shopware/docker)’s `docker/Dockerfile` — shops **must** `composer require shopware/docker` on the same line as this package. Each VPS and laptop needs fyrst-cli 0.1.0+ on `PATH`. The Flex recipe ([`fyrst-dev/recipes`](https://github.com/fyrst-dev/recipes), later recipes-contrib) is metadata only (`copy-from-package` + `bundles` + `env` + post-install toast) — not a second overlay source.
 
 Process (locked standard): [Shopware Create & Continuous Deploy](https://app.clickup.com/90151931897/docs/2kyqjkzt-915)
 
@@ -144,7 +144,7 @@ fyrst-cli shopware env init --shop-id acme
 # VPS: add --vps --env live --image ghcr.io/example/acme
 ```
 
-`--shop-id` is required unless already non-empty. fyrst-cli merges missing keys from `.env.example` and does not invent MYSQL passwords or `APP_URL`. See `deploy/README.md` after Flex copies it, and [fyrst-cli](https://github.com/fyrst-dev/cli). Same loader for every `fyrst-cli shopware` verb.
+`--shop-id` is required unless already non-empty. fyrst-cli merges missing keys from `.env.example` and does not invent MYSQL passwords or `APP_URL`. It does not generate `APP_SECRET` (`shopware-cli project create` already writes it). See `deploy/README.md` after Flex copies it, and [fyrst-cli](https://github.com/fyrst-dev/cli). Same loader for every `fyrst-cli shopware` verb.
 
 **Formula:**
 
@@ -176,7 +176,7 @@ Named volumes `mysql_data` / `redis_data` are scoped by the derived Compose proj
 | Name | Purpose |
 | --- | --- |
 | `APP_URL` / `SALES_CHANNEL_URL` | Public shop URL. Rewrite uses `APP_URL` only |
-| `APP_SECRET` | Persistent secret (`openssl rand -hex 32`) |
+| `APP_SECRET` | Persistent secret (`shopware-cli project create` writes it; `fyrst-cli shopware env init` does not rewrite it) |
 | `DATABASE_URL` | MySQL/MariaDB DSN |
 | `SHOPWARE_SHOP_ID` | Stable shop slug (same on every stack of this shop). **Required.** |
 | `SHOPWARE_DEPLOY_ENV` | This stack’s role (`live` / `staging` / …). **Required.** |
@@ -271,7 +271,7 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 
 Operators call fyrst-cli 0.1.0+ (recipe `deploy/*.sh` wrappers are removed):
 
-- `fyrst-cli shopware env init` — Flex `env` appends safe SoT keys; fyrst-cli fills shop id / env, optional `IMAGE` / `APP_SECRET`, and `--vps` comments create’s `COMPOSE_PROJECT_NAME=sw-shop-…`
+- `fyrst-cli shopware env init` — Flex `env` appends safe SoT keys; fyrst-cli fills shop id / env, optional `IMAGE`, and `--vps` comments create’s `COMPOSE_PROJECT_NAME=sw-shop-…`. Does not generate `APP_SECRET` (`shopware-cli project create` already writes it).
 - `fyrst-cli shopware deploy release` — also invoked from CI (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`). `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`.
 - `fyrst-cli shopware deploy rollback`
 - `fyrst-cli shopware sync {capture\|apply\|pull}` — VPS only: live → staging/playground/dev copy of DB + host dirs (SSH + `shopware-cli project dump` + rsync; **no S3**; paths from `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV`, optional `SHOPWARE_DATA_BASE` / `SHOPWARE_DATA_ROOT`)
