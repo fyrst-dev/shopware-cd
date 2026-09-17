@@ -247,12 +247,31 @@ fyrst_assert(
         && str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=<shop-id>-<env>')
         && str_contains($composeYaml, 'compose.override.yaml')
         && str_contains($composeYaml, 'acme-dev')
-        && str_contains($composeYaml, 'fyrst-cli `-p`')
+        && str_contains($composeYaml, 'matching pin')
+        && str_contains($composeYaml, '--env-file .env')
+        && str_contains($composeYaml, '.env.local')
+        && str_contains($composeYaml, '.env.prod')
+        && str_contains($composeYaml, 'Raw Compose must use those same')
         && str_contains($composeYaml, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
         && !str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($composeYaml, 'pins VPS compose')
         && !str_contains($composeYaml, 'always comments out'),
-    'overlay/deploy/compose.yaml documents strip + unified <shop-id>-<env> name: / -p'
+    'overlay/deploy/compose.yaml documents strip + name: SoT + stacked --env-file + matching pin'
+);
+$composeProdYaml = (string) file_get_contents($root . '/overlay/deploy/compose.prod.yaml');
+fyrst_assert(
+    str_contains($composeProdYaml, '--env-file .env')
+        && str_contains($composeProdYaml, '.env.local')
+        && str_contains($composeProdYaml, '.env.prod')
+        && str_contains($composeProdYaml, 'matching pin'),
+    'overlay/deploy/compose.prod.yaml documents stacked --env-file and -p matching pin'
+);
+$composeVpsYaml = (string) file_get_contents($root . '/overlay/deploy/compose.vps.yaml');
+fyrst_assert(
+    str_contains($composeVpsYaml, '--env-file .env')
+        && str_contains($composeVpsYaml, '.env.local')
+        && str_contains($composeVpsYaml, '.env.prod'),
+    'overlay/deploy/compose.vps.yaml documents stacked --env-file flags'
 );
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
@@ -280,7 +299,10 @@ fyrst_assert(
         && str_contains($deployReadme, 'compose.override.yaml')
         && str_contains($deployReadme, 'acme-dev')
         && str_contains($deployReadme, '.env.local')
-        && str_contains($deployReadme, 'fyrst-cli `-p`')
+        && str_contains($deployReadme, 'matching pin')
+        && str_contains($deployReadme, '--env-file .env')
+        && str_contains($deployReadme, '.env.prod')
+        && str_contains($deployReadme, 'Raw Compose must use those same')
         && !str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($deployReadme, 'always comments out')
         && !str_contains($deployReadme, 'can keep it'),
@@ -586,7 +608,10 @@ fyrst_assert(
     'README names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($readme, 'fyrst-cli `-p`')
+    str_contains($readme, 'matching pin')
+        && str_contains($readme, '--env-file .env')
+        && str_contains($readme, '.env.prod')
+        && str_contains($readme, 'Raw Compose must use those same')
         && str_contains($readme, 'acme-dev')
         && str_contains($readme, 'acme-live')
         && (str_contains($readme, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
@@ -848,7 +873,10 @@ fyrst_assert(
     'CREATE.md names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($create, 'fyrst-cli `-p`')
+    str_contains($create, 'matching pin')
+        && str_contains($create, '--env-file .env')
+        && str_contains($create, '.env.prod')
+        && str_contains($create, 'Raw Compose must use those same')
         && str_contains($create, 'acme-dev')
         && str_contains($create, 'acme-live')
         && (str_contains($create, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
@@ -1071,8 +1099,12 @@ foreach ([
         "{$name} keeps Compose project name as shop-id + deploy env"
     );
     fyrst_assert(
-        str_contains($text, 'fyrst-cli `-p`'),
-        "{$name} names VPS stack with fyrst-cli -p from loaded identity"
+        str_contains($text, 'matching pin')
+            && str_contains($text, '--env-file .env')
+            && str_contains($text, '.env.local')
+            && str_contains($text, '.env.prod')
+            && str_contains($text, 'Raw Compose must use those same'),
+        "{$name} names VPS stack with compose name: SoT, stacked --env-file, and -p as matching pin"
     );
     fyrst_assert(
         !str_contains($text, 'share a stable project name')

@@ -2,10 +2,14 @@
 # shopware-cli project create owns the shop-root compose.yaml used by
 # `shopware-cli project dev`. This file is only the prod/CD stack.
 #
-# Invoke from the shop root (COMPOSE_DIR). Pass --env-file .env so interpolation
-# reads shop-root `.env` (the compose file lives under deploy/, so Compose's
-# default `.env` lookup would be deploy/.env).
-#   docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml ...
+# Invoke from the shop root (COMPOSE_DIR). VPS Compose naming SoT is this
+# file's `name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` with host env
+# files loaded. Pass --env-file .env then .env.local then .env.prod (if
+# present) — the compose file lives under deploy/, so Compose's default
+# `.env` lookup would be deploy/.env. fyrst-cli keeps -p only as a matching
+# pin. Raw Compose must use those same --env-file flags (omit a flag if
+# that host file is missing).
+#   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml ...
 #
 # Production overrides: deploy/compose.prod.yaml
 # VPS pull/no-build:    deploy/compose.vps.yaml
@@ -27,9 +31,11 @@
 #
 # Source of truth: SHOPWARE_SHOP_ID in shared committed .env;
 # SHOPWARE_DEPLOY_ENV + COMPOSE_PROJECT_NAME=<shop-id>-<env> in host
-# .env.local / .env.prod (fyrst-cli loads identity, then interpolates /
-# passes -p). Local and VPS use ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
-# (acme-dev / acme-live) — not folder basename, not shopware-<shop-id>.
+# .env.local / .env.prod. VPS Compose naming SoT is this `name:` with those
+# host env files loaded (--env-file .env then .env.local then .env.prod if
+# present). fyrst-cli keeps -p only as a matching pin. Local and VPS use
+# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} (acme-dev / acme-live) — not
+# folder basename, not shopware-<shop-id>.
 # env init sets gitignored compose.override.yaml `name:` for
 # shopware-cli project dev. Compose interpolates bind-mount paths from
 # shop id + env (plus optional SHOPWARE_DATA_BASE). Nested defaults
@@ -37,8 +43,8 @@
 # three separate interpolations concatenated with /.
 #
 # VPS stack name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
-# via this `name:` / fyrst-cli `-p` from loaded identity (matches
-# COMPOSE_PROJECT_NAME in .env.local).
+# via this `name:` (SoT) with host env files loaded. fyrst-cli keeps `-p`
+# only as a matching pin (matches COMPOSE_PROJECT_NAME in .env.local).
 # Named volumes mysql_data / redis_data on the VPS are prefixed by
 # ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
 # (acme-live_mysql_data vs acme-staging_mysql_data).
@@ -105,7 +111,7 @@ services:
             start_period: 60s
 
     # One-shot install/update. Never compiles themes/assets (those are in the image).
-    #   docker compose --env-file .env -f deploy/compose.yaml --profile setup run --rm setup
+    #   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml --profile setup run --rm setup
     setup:
         <<: *shopware
         profiles: ["setup"]
