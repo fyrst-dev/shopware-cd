@@ -37,7 +37,7 @@ $BACKUP_TARGET/$SHOPWARE_SHOP_ID/$SHOPWARE_DEPLOY_ENV/YYYYMMDDTHHMMSSZ/
 On the **live** VPS (unlike sync, which you configure on staging):
 
 1. Set `BACKUP_TARGET` in shop-root `.env` / `.env.prod` to a **second disk** or an **SSH host** (not only a directory on the same root filesystem as `/var/lib/shopware`). Same-disk copies are better than nothing but do not survive disk loss. Default is `local`.
-2. `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV=live` in shop-root `.env` (same as Compose).
+2. `SHOPWARE_SHOP_ID` in shared `.env` + `SHOPWARE_DEPLOY_ENV=live` in host `.env.local` / `.env.prod` (same identity Compose uses).
 3. Reuse `SHOPWARE_SSH_*` when `BACKUP_TARGET` is SSH.
 4. Install **fyrst-cli 0.1.0+**. Dump with shopware-cli yourself and set `BACKUP_DB_DUMP` when `--data` includes db. Shop-root `.env` still needs `IMAGE` for compose interpolation.
 

@@ -43,7 +43,7 @@ docker run -d --name shopware-edge --network host --restart unless-stopped \
 
 ## Several shops / live+staging on one VPS
 
-Each stack has its own `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV` and a unique `HTTP_PORT` (and VPS Compose project `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). Host-based routing, not path-based:
+Each stack has its own `SHOPWARE_SHOP_ID` (shared `.env`) + `SHOPWARE_DEPLOY_ENV` (host `.env.local` / `.env.prod`) and a unique `HTTP_PORT` (and VPS stack name `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). Host-based routing, not path-based:
 
 ```caddyfile
 # live  — SHOPWARE_SHOP_ID=acme SHOPWARE_DEPLOY_ENV=live  HTTP_PORT=8000

@@ -11,8 +11,9 @@
 # VPS pull/no-build:    deploy/compose.vps.yaml
 #
 # Paths (build context, env_file) are relative to this file under deploy/;
-# shop root is `..`. Finish shop-root .env with fyrst-cli shopware env init
-# (or copy .env.example → .env by hand). No real secrets belong here.
+# shop root is `..`. Finish shared .env + host .env.local with
+# fyrst-cli shopware env init (or copy .env.example → .env by hand).
+# No real secrets belong here.
 #
 # Bundled MySQL: service name `mysql` (DATABASE_URL host = mysql).
 # External DB:   set DATABASE_URL to the DBaaS DSN, delete or comment out
@@ -24,26 +25,23 @@
 #   worker     — messenger:consume
 #   scheduler  — scheduled-task:run
 #
-# Source of truth: SHOPWARE_SHOP_ID + SHOPWARE_DEPLOY_ENV in shop-root .env.
-# Compose interpolates bind-mount paths from those two (plus optional
-# SHOPWARE_DATA_BASE). Nested defaults like ${ROOT:-/base/${SHOP_ID}/...} do
-# not expand in Compose; these are three separate interpolations concatenated
-# with /.
+# Source of truth: SHOPWARE_SHOP_ID in shared committed .env;
+# SHOPWARE_DEPLOY_ENV in host .env.local / .env.prod (fyrst-cli loads
+# identity, then interpolates / passes -p). Compose interpolates bind-mount
+# paths from those two (plus optional SHOPWARE_DATA_BASE). Nested defaults
+# like ${ROOT:-/base/${SHOP_ID}/...} do not expand in Compose; these are
+# three separate interpolations concatenated with /.
 #
-# VPS project name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
-# fyrst-cli pins VPS compose so .env COMPOSE_PROJECT_NAME does not override
-# this name:. Local shopware-cli project dev uses
-# COMPOSE_PROJECT_NAME=shopware-<slug> from env init (e.g. shopware-acme).
+# VPS stack name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
+# via this `name:` / fyrst-cli `-p` from loaded identity.
 # Named volumes mysql_data / redis_data on the VPS are prefixed by
 # ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
 # (acme-live_mysql_data vs acme-staging_mysql_data).
-# Do not hardcode `name: shopware` (bare). Local pattern is shopware-<shop-id>;
-# VPS remains <shop-id>-<env>.
-# Do not set COMPOSE_PROJECT_NAME= (empty) in .env — that env var would
-# override local root compose. shopware-cli project create writes
-# COMPOSE_PROJECT_NAME=sw-shop-… into .env. env init sets
-# COMPOSE_PROJECT_NAME=shopware-<shop-id> for local project dev.
-# This recipe does not set it on composer require (run env init).
+# Do not hardcode `name: shopware` (bare). VPS remains <shop-id>-<env>.
+# Do not put COMPOSE_PROJECT_NAME in shared .env (including empty) — that
+# env var would override this `name:`. shopware-cli project create writes
+# COMPOSE_PROJECT_NAME=sw-shop-… into .env. env init strips that line.
+# This recipe does not strip it on composer require (run env init).
 #
 # Runtime uploads are bind mounts (not named volumes):
 #   ${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}
@@ -54,7 +52,7 @@
 #   chown -R 82:82 ${DATA}
 # mysql_data / redis_data stay named volumes (auto-prefixed by project name).
 
-name: "${SHOPWARE_SHOP_ID:?Set SHOPWARE_SHOP_ID in .env}-${SHOPWARE_DEPLOY_ENV:?Set SHOPWARE_DEPLOY_ENV in .env}"
+name: "${SHOPWARE_SHOP_ID:?Set SHOPWARE_SHOP_ID in .env}-${SHOPWARE_DEPLOY_ENV:?Set SHOPWARE_DEPLOY_ENV in .env.local}"
 
 x-shopware: &shopware
     image: ${IMAGE:?Set IMAGE in .env}:${IMAGE_TAG:-latest}

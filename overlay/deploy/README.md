@@ -6,27 +6,31 @@
 # CD/VPS stack lives here under `deploy/`. Shop-root `compose.yaml` is owned by
 # `shopware-cli project create` (`shopware-cli project dev`) — not this recipe.
 #
-# Naming (shop-root `.env`; same shop slug on live + staging + laptop):
-#   SHOPWARE_SHOP_ID       stable slug (e.g. acme) — required
-#   SHOPWARE_DEPLOY_ENV    live | staging | playground | dev — required
+# Naming (shared committed `.env` + host `.env.local` / `.env.prod`;
+# same shop slug on live + staging + laptop):
+#   SHOPWARE_SHOP_ID       stable slug (e.g. acme) — required; shared `.env`
+#   SHOPWARE_DEPLOY_ENV    live | staging | playground | dev — required;
+#                          host `.env.local` / `.env.prod` (env init writes
+#                          `.env.local`). Do not lock a real value in shared `.env`.
 #   SHOPWARE_DATA_BASE     optional prefix (default /var/lib/shopware/data)
 # Compose interpolates bind mounts from shop id + env
 # (three separate interpolations; nested ${A:-.../${B}} defaults do not expand).
-# fyrst-cli shopware env init --shop-id <slug> sets
-# COMPOSE_PROJECT_NAME=shopware-<slug> for local shopware-cli project dev
-# (no env suffix). VPS Compose project remains
-# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} (e.g. acme-live). fyrst-cli
-# pins VPS compose so .env COMPOSE_PROJECT_NAME does not override name:.
+# fyrst-cli shopware env init --shop-id <slug> strips create's
+# COMPOSE_PROJECT_NAME from shared `.env` and writes SHOPWARE_DEPLOY_ENV
+# to host `.env.local`. VPS stack name remains
+# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} (e.g. acme-live) via deploy
+# compose `name:` / fyrst-cli `-p` from loaded identity.
 # SHOPWARE_DATA_ROOT is an optional script/docs override (fyrst-cli derives
-# it when unset; if set, it prefers it). Do not set COMPOSE_PROJECT_NAME empty.
+# it when unset; if set, it prefers it). Do not set COMPOSE_PROJECT_NAME
+# (including empty) in shared `.env`.
 #
 # shopware-cli project create writes COMPOSE_PROJECT_NAME=sw-shop-… into
-# shop-root `.env`. env init replaces that with shopware-<shop-id> for
-# local project dev. Flex does not set this on composer require — run env init.
+# shop-root `.env`. env init strips that line. Flex does not strip it on
+# composer require — run env init.
 # After recipe changes: `composer recipes:update fyrst/shopware-cd` then
 # `fyrst-cli shopware env init` (or merge new keys from `.env.example` by hand).
 # fyrst-cli loads `.env` then `.env.local` then `.env.prod`. Laptop SSH
-# (`SHOPWARE_SSH_*`) belongs in `.env.local`.
+# (`SHOPWARE_SSH_*`) belongs in `.env.local` with this host's SHOPWARE_DEPLOY_ENV.
 # Install fyrst-cli 0.1.0+ on each VPS. Dump stays shopware-cli.
 
 ## fyrst-cli (required on each VPS / laptop)
@@ -42,7 +46,7 @@ CI runs `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` /
 `COMPOSE_DIR`). Cron and operators use the same lifecycle verbs.
 **Dump stays `shopware-cli project dump`.** fyrst-cli never dumps.
 
-- `fyrst-cli shopware env init` — finish shop-root `.env` after create + Flex (sets `COMPOSE_PROJECT_NAME=shopware-<shop-id>` for local project dev)
+- `fyrst-cli shopware env init` — finish shared `.env` after create + Flex (strips `COMPOSE_PROJECT_NAME`; writes `SHOPWARE_DEPLOY_ENV` to host `.env.local`)
 - `fyrst-cli shopware deploy release` — pull image, recreate the VPS stack
 - `fyrst-cli shopware deploy rollback` — re-deploy `IMAGE` from `.previous-tag`
 - `fyrst-cli shopware sync capture` — copy bind-mount trees into a workdir
@@ -61,17 +65,19 @@ templates under `deploy/` stay in this recipe.
 - **web** — Shopware image (`ghcr.io/shopware/docker-base` + project artifact), port 8000 (prod: loopback only)
 - **setup** — one-shot `shopware-deployment-helper` (profile `setup`)
 - **mysql** — bundled in Compose, or delete the service and point `DATABASE_URL` at DBaaS. Prod overlay keeps `ports: []`.
-- **redis** / **worker** / **scheduler** — Compose profiles. **Live recommendation:** `COMPOSE_PROFILES=redis,worker,scheduler` (uncomment in `.env`). Staging leaves this unset unless you intentionally need async/scheduled tasks. `fyrst-cli shopware deploy release` warns on live when the variable is empty; it does **not** auto-enable profiles.
+- **redis** / **worker** / **scheduler** — Compose profiles. **Live recommendation:** `COMPOSE_PROFILES=redis,worker,scheduler` (uncomment on the live host `.env.local` / `.env.prod`). Staging leaves this unset unless you intentionally need async/scheduled tasks. `fyrst-cli shopware deploy release` warns on live when the variable is empty; it does **not** auto-enable profiles.
 
 ## Shop-root `.env` after create (Flex + `fyrst-cli shopware env init`)
 
 `shopware-cli project create` writes `.env`. Flex may append a marked block
-(safe defaults only — empty shop id, no secrets):
+(safe defaults only — empty shop id, no secrets). Shared committed `.env`
+holds shared keys only. If Flex still writes `SHOPWARE_DEPLOY_ENV=live`,
+leave it empty or omit it — host `.env.local` / `.env.prod` sets this host’s
+role:
 
 ```bash
 ###> fyrst/shopware-cd ###
 SHOPWARE_SHOP_ID=
-SHOPWARE_DEPLOY_ENV=live
 SHOPWARE_DATA_BASE=/var/lib/shopware/data
 ###< fyrst/shopware-cd ###
 ```
@@ -79,10 +85,11 @@ SHOPWARE_DATA_BASE=/var/lib/shopware/data
 Finish shop-specific values **without** replacing the whole file:
 
 ```bash
-# after composer require (laptop or VPS) — sets COMPOSE_PROJECT_NAME=shopware-acme for local project dev
+# after composer require (laptop or VPS) — strips COMPOSE_PROJECT_NAME from shared .env
+# writes SHOPWARE_DEPLOY_ENV to host .env.local
 fyrst-cli shopware env init --shop-id acme
 
-# VPS: set identity + optional IMAGE
+# VPS: set this host's role + optional IMAGE
 fyrst-cli shopware env init --shop-id acme --env live --image ghcr.io/fyrst-dev/shop-name
 
 # preview
@@ -91,11 +98,12 @@ fyrst-cli shopware env init --shop-id acme --dry-run
 
 `--shop-id` is required unless `SHOPWARE_SHOP_ID` is already non-empty.
 `--env` is `live` | `staging` | `playground` | `dev` (default `live` when
-unset/empty; an existing non-empty value is kept). The command copies
+unset/empty; written to host `.env.local`, not shared `.env`). The command copies
 `.env.example` → `.env` when `.env` is missing, then merges **missing** keys
 from `.env.example` without clobbering existing non-empty values. It does
 **not** invent `MYSQL_*` passwords or `APP_URL`. It does **not** generate
-`APP_SECRET` (`shopware-cli project create` already writes it).
+`APP_SECRET` (`shopware-cli project create` already writes it). It **strips**
+create’s `COMPOSE_PROJECT_NAME=sw-shop-…` from shared `.env`.
 
 ## One-time VPS bootstrap
 
@@ -103,25 +111,24 @@ from `.env.example` without clobbering existing non-empty values. It does
    Install **fyrst-cli 0.1.0+** (`scripts/install.sh` above).
 2. Checkout this shop repo (read-only deploy key) to a path such as `/opt/shopware/<shop>`.
    That path is `VPS_PATH` in CI.
-3. Finish `.env` (Flex may already have appended SoT keys). `chmod 600 .env`.
+3. Finish shared `.env` (Flex may already have appended SoT keys). `chmod 600 .env`.
 
    ```bash
    fyrst-cli shopware env init --shop-id acme --env live --image ghcr.io/fyrst-dev/shop-name
    # equivalent keys:
-   # SHOPWARE_SHOP_ID=acme
-   # SHOPWARE_DEPLOY_ENV=live          # this host's role
+   # shared .env: SHOPWARE_SHOP_ID=acme
+   # host .env.local: SHOPWARE_DEPLOY_ENV=live          # this host's role
    # optional: SHOPWARE_DATA_BASE=/var/lib/shopware/data
    ```
 
-   VPS Compose project remains `acme-live` (`name:` from shop id + env).
-   fyrst-cli pins VPS compose so `.env`’s `COMPOSE_PROJECT_NAME=shopware-acme`
-   does not override. Bind-mount root is
+   VPS stack name remains `acme-live` (`name:` from shop id + env / fyrst-cli
+   `-p` from loaded identity). Bind-mount root is
    `/var/lib/shopware/data/acme/live`. `SHOPWARE_DATA_ROOT` stays optional.
    fyrst-cli still derives that expanded string when unset (and prefers it
    when set) for logs and tools.
 
-   Leave `COMPOSE_PROJECT_NAME=shopware-acme` for local `shopware-cli project dev`.
-   Flex does not set this on `composer require` — run env init.
+   Shared `.env` has no `COMPOSE_PROJECT_NAME` (env init strips create’s
+   `sw-shop-…` line). Flex does not strip it on `composer require` — run env init.
 4. Create `.env.prod` (may be empty) so `deploy/compose.prod.yaml` can mount it.
 5. Set `IMAGE` to the registry repository CI pushes (example: `ghcr.io/fyrst-dev/shop-name`)
    (`--image` on `env init`, or by hand).
@@ -141,14 +148,14 @@ from `.env.example` without clobbering existing non-empty values. It does
 7. `docker login` to that registry on the VPS (or use a credential helper / `~/.docker/config.json`).
 8. Put **host Caddy** in front of loopback `HTTP_PORT` (TLS). See **[edge/README.md](edge/README.md)** and `deploy/edge/Caddyfile`. Do not expose MySQL (`compose.prod.yaml` keeps `ports: []`).
 9. Store the previous image tag for rollback (release writes `.deployed-tag` / `.previous-tag`). Use `fyrst-cli shopware deploy rollback` — do not re-run a failed tag via CI unless you mean to.
-10. On **live**, set `BACKUP_TARGET` (second disk or SSH) in shop-root `.env` / `.env.prod` and enable nightly `fyrst-cli shopware backup create`. Sync is not a backup.
-11. On **live**, uncomment `COMPOSE_PROFILES=redis,worker,scheduler` in `.env` (worker + scheduler; include redis if you use it). Staging should not inherit that unless documented.
+10. On **live**, set `BACKUP_TARGET` (second disk or SSH) in host `.env.local` / `.env.prod` and enable nightly `fyrst-cli shopware backup create`. Sync is not a backup.
+11. On **live**, uncomment `COMPOSE_PROFILES=redis,worker,scheduler` on the live host (`.env.local` / `.env.prod`; worker + scheduler; include redis if you use it). Staging should not inherit that unless documented.
 
 ## Several shops / live+staging on the same VPS
 
-`SHOPWARE_SHOP_ID` is the same slug everywhere for one shop. `SHOPWARE_DEPLOY_ENV` differs per stack. Checkout path (`VPS_PATH`) is independent of the data root.
+`SHOPWARE_SHOP_ID` is the same slug everywhere for one shop (shared `.env`). `SHOPWARE_DEPLOY_ENV` differs per host (`.env.local` / `.env.prod`). Checkout path (`VPS_PATH`) is independent of the data root.
 
-VPS Compose project remains `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` (fyrst-cli pins VPS compose so `.env`’s `COMPOSE_PROJECT_NAME` does not override):
+VPS stack name remains `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` via `deploy/compose.yaml` `name:` / fyrst-cli `-p` from loaded identity:
 
 - acme live — project `acme-live`, data `/var/lib/shopware/data/acme/live`
 - acme staging — project `acme-staging`, data `/var/lib/shopware/data/acme/staging`
@@ -156,7 +163,7 @@ VPS Compose project remains `${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` (fyrst-
 
 Named volumes become `acme-live_mysql_data`, `acme-staging_mysql_data`, … — unique because Compose prefixes them with the VPS project name. Bind-mount trees do not overlap.
 
-`deploy/compose.yaml` interpolates `name:` from shop id + env (no bare `name: shopware`). Local `shopware-cli project dev` uses `COMPOSE_PROJECT_NAME=shopware-<shop-id>` from env init.
+`deploy/compose.yaml` interpolates `name:` from shop id + env (no bare `name: shopware`). Do not put `COMPOSE_PROJECT_NAME` in shared `.env` (env init strips create’s `sw-shop-…` line).
 
 ## CD sequence (what CI runs)
 
@@ -202,7 +209,7 @@ docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.prod.yam
 - `deploy/compose.yaml` — CD/VPS image-based stack
 - `deploy/compose.prod.yaml` — production overrides
 - `deploy/compose.vps.yaml` — `pull_policy: ${PULL_POLICY:-always}` (CI/VPS default). Same-host tag-and-load / air-gap: `PULL_POLICY=never` and `SKIP_PULL=1` (or `fyrst-cli shopware deploy release --skip-pull`) so Compose does not pull a tag that was never pushed.
-`fyrst-cli shopware deploy release` loads shop-root `.env` (shop id + env required), pins VPS compose so `.env`’s `COMPOSE_PROJECT_NAME` does not override `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`), derives `SHOPWARE_DATA_ROOT` when unset, then runs that command from `COMPOSE_DIR` (shop root).
+`fyrst-cli shopware deploy release` loads shop-root identity (shared `.env`, then `.env.local`, then `.env.prod`; shop id + env required), passes `-p` from loaded identity (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`), derives `SHOPWARE_DATA_ROOT` when unset, then runs that command from `COMPOSE_DIR` (shop root).
 
 Local development uses `shopware-cli project create`'s shop-root `compose.yaml` with `shopware-cli project dev`. This recipe does not copy that file. Create writes `.shopware-project.yml` (fine as-is; shopware-cli also accepts `.yaml` — do not rename).
 
@@ -251,7 +258,7 @@ See **[backup-runtime.md](backup-runtime.md)**. Cron on live:
 20 2 * * * cd /opt/shopware/acme-live && fyrst-cli shopware backup create
 ```
 
-Set `BACKUP_TARGET` in shop-root `.env` / `.env.prod` (second disk or SSH; default `local`). `BACKUP_KEEP_DAYS` (default 14) is implemented. Reuse `SHOPWARE_SSH_*` when the target is SSH. Quarterly restore drill: restore onto staging first; live DR needs `SHOPWARE_ALLOW_LIVE_RESTORE=1`.
+Set `BACKUP_TARGET` in host `.env.local` / `.env.prod` (second disk or SSH; default `local`). `BACKUP_KEEP_DAYS` (default 14) is implemented. Reuse `SHOPWARE_SSH_*` when the target is SSH. Quarterly restore drill: restore onto staging first; live DR needs `SHOPWARE_ALLOW_LIVE_RESTORE=1`.
 
 ## Managed host (planned)
 

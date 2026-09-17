@@ -211,10 +211,16 @@ fyrst_assert(
     'overlay/.env.example documents env init identity flags without --vps'
 );
 fyrst_assert(
-    str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=shopware-')
-        && str_contains($overlayExample, 'sets COMPOSE_PROJECT_NAME=shopware-<slug>')
+    str_contains($overlayExample, 'strips')
+        && str_contains($overlayExample, 'COMPOSE_PROJECT_NAME')
+        && str_contains($overlayExample, '.env.local')
+        && !str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($overlayExample, 'always comments out'),
-    'overlay/.env.example documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
+    'overlay/.env.example documents env init strips COMPOSE_PROJECT_NAME and writes SHOPWARE_DEPLOY_ENV to .env.local'
+);
+fyrst_assert(
+    !preg_match('/^SHOPWARE_DEPLOY_ENV=live\s*$/m', $overlayExample),
+    'overlay/.env.example does not lock SHOPWARE_DEPLOY_ENV=live in shared .env'
 );
 fyrst_assert(
     str_contains($overlayExample, 'APP_SECRET='),
@@ -233,12 +239,14 @@ fyrst_assert(
 );
 $composeYaml = (string) file_get_contents($root . '/overlay/deploy/compose.yaml');
 fyrst_assert(
-    str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
-        && str_contains($composeYaml, 'pins VPS compose')
-        && str_contains($composeYaml, 'does not override')
-        && str_contains($composeYaml, 'for local project dev')
+    str_contains($composeYaml, 'strips')
+        && str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($composeYaml, 'fyrst-cli `-p`')
+        && str_contains($composeYaml, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
+        && !str_contains($composeYaml, 'COMPOSE_PROJECT_NAME=shopware-')
+        && !str_contains($composeYaml, 'pins VPS compose')
         && !str_contains($composeYaml, 'always comments out'),
-    'overlay/deploy/compose.yaml documents local shopware-<shop-id> and pinned VPS name:'
+    'overlay/deploy/compose.yaml documents strip + VPS name: / -p from identity'
 );
 $deployGitignore = (string) file_get_contents($root . '/overlay/deploy/.gitignore');
 fyrst_assert(
@@ -261,11 +269,14 @@ fyrst_assert(
     'overlay/deploy/README.md documents env init identity / IMAGE / --dry-run without --vps'
 );
 fyrst_assert(
-    str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=shopware-')
-        && str_contains($deployReadme, 'sets `COMPOSE_PROJECT_NAME=shopware-<shop-id>`')
+    str_contains($deployReadme, 'strips')
+        && str_contains($deployReadme, 'COMPOSE_PROJECT_NAME')
+        && str_contains($deployReadme, '.env.local')
+        && str_contains($deployReadme, 'fyrst-cli `-p`')
+        && !str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($deployReadme, 'always comments out')
         && !str_contains($deployReadme, 'can keep it'),
-    'overlay/deploy/README.md documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>'
+    'overlay/deploy/README.md documents env init strips COMPOSE_PROJECT_NAME and host .env.local'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $deployReadme)
@@ -405,11 +416,13 @@ fyrst_assert(
     'README documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($readme, 'sets `COMPOSE_PROJECT_NAME=shopware-<slug>`')
-        && str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-')
+    str_contains($readme, 'strips')
+        && str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($readme, '.env.local')
+        && !str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($readme, 'always comments out')
         && !str_contains($readme, '--vps'),
-    'README documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id> without --vps'
+    'README documents env init strips COMPOSE_PROJECT_NAME without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $readme)
@@ -562,10 +575,10 @@ fyrst_assert(
     'README names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-${SHOPWARE_SHOP_ID}')
-        || str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-<slug>')
-        || str_contains($readme, 'COMPOSE_PROJECT_NAME=shopware-<shop-id>'),
-    'README sets COMPOSE_PROJECT_NAME to shopware-<shop-id>'
+    str_contains($readme, 'fyrst-cli `-p`')
+        && (str_contains($readme, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
+            || str_contains($readme, 'acme-live')),
+    'README names VPS stack via name: / -p as shop-id + deploy env'
 );
 fyrst_assert(
     str_contains($readme, '`SHOPWARE_DATA_ROOT` stays optional')
@@ -706,11 +719,13 @@ fyrst_assert(
     'CREATE.md documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($create, 'sets `COMPOSE_PROJECT_NAME=shopware-<slug>`')
-        && str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-')
+    str_contains($create, 'strips')
+        && str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && str_contains($create, '.env.local')
+        && !str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-')
         && !str_contains($create, 'always comments out')
         && !str_contains($create, '--vps'),
-    'CREATE.md documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id> without --vps'
+    'CREATE.md documents env init strips COMPOSE_PROJECT_NAME without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $create)
@@ -817,9 +832,10 @@ fyrst_assert(
     'CREATE.md names SHOPWARE_DEPLOY_ENV'
 );
 fyrst_assert(
-    str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-<slug>')
-        || str_contains($create, 'COMPOSE_PROJECT_NAME=shopware-<shop-id>'),
-    'CREATE.md sets COMPOSE_PROJECT_NAME to shopware-<shop-id>'
+    str_contains($create, 'fyrst-cli `-p`')
+        && (str_contains($create, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
+            || str_contains($create, 'acme-live')),
+    'CREATE.md names VPS stack via name: / -p as shop-id + deploy env'
 );
 fyrst_assert(
     str_contains($create, '`SHOPWARE_DATA_ROOT` is **optional**')
@@ -998,27 +1014,38 @@ foreach ([
     fyrst_assert(
         !str_contains($text, 'always comments out')
             && !str_contains($text, 'always-strip'),
-        "{$name} does not document env init as commenting out COMPOSE_PROJECT_NAME"
+        "{$name} does not use always-comments-out / always-strip labels"
     );
     fyrst_assert(
-        str_contains($text, 'COMPOSE_PROJECT_NAME=shopware-'),
-        "{$name} documents env init COMPOSE_PROJECT_NAME=shopware-<shop-id>"
+        str_contains($text, 'strips')
+            && str_contains($text, 'COMPOSE_PROJECT_NAME'),
+        "{$name} documents env init strips COMPOSE_PROJECT_NAME"
     );
     fyrst_assert(
-        str_contains($text, 'VPS Compose project remains')
+        !str_contains($text, 'COMPOSE_PROJECT_NAME=shopware-')
+            && !str_contains($text, 'sets `COMPOSE_PROJECT_NAME='),
+        "{$name} does not set COMPOSE_PROJECT_NAME in shared .env"
+    );
+    fyrst_assert(
+        str_contains($text, 'SHOPWARE_DEPLOY_ENV')
+            && str_contains($text, '.env.local'),
+        "{$name} writes SHOPWARE_DEPLOY_ENV to host .env.local"
+    );
+    fyrst_assert(
+        (str_contains($text, 'VPS stack name remains')
+            || str_contains($text, 'VPS Compose project remains'))
             && (str_contains($text, '${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}')
                 || str_contains($text, 'acme-live')),
-        "{$name} keeps VPS Compose project as shop-id + deploy env"
+        "{$name} keeps VPS stack name as shop-id + deploy env"
     );
     fyrst_assert(
-        str_contains($text, 'for local')
-            || str_contains($text, 'local `shopware-cli project dev`')
-            || str_contains($text, 'local project dev'),
-        "{$name} scopes COMPOSE_PROJECT_NAME=shopware-<shop-id> to local project dev"
+        str_contains($text, 'fyrst-cli `-p`'),
+        "{$name} names VPS stack with fyrst-cli -p from loaded identity"
     );
     fyrst_assert(
-        !str_contains($text, 'share a stable project name'),
-        "{$name} does not say local and VPS share COMPOSE_PROJECT_NAME"
+        !str_contains($text, 'share a stable project name')
+            && !str_contains($text, 'pins VPS compose'),
+        "{$name} does not use dual-name / pin-to-override-COMPOSE_PROJECT_NAME wording"
     );
 }
 
