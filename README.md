@@ -56,7 +56,8 @@ composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd
 curl -fsSL https://raw.githubusercontent.com/fyrst-dev/cli/main/scripts/install.sh | bash
 # pin: FYRST_CLI_VERSION=0.1.0
 fyrst-cli shopware env init --shop-id <slug>
-# VPS: fyrst-cli shopware env init --shop-id <slug> --vps
+# always comments out create's COMPOSE_PROJECT_NAME=sw-shop-…
+# VPS extras: --env live --image ghcr.io/example/acme
 ```
 
 Run Composer **inside Docker** when the web container is up (`docker compose exec web composer …`). Host PHP is often under-provisioned.
@@ -135,13 +136,14 @@ Several shops, and live + staging of the same shop, can share one VPS. Isolate t
 
 `COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional**. `deploy/compose.yaml` interpolates `SHOPWARE_SHOP_ID`, `SHOPWARE_DEPLOY_ENV`, and `SHOPWARE_DATA_BASE` **directly** (project name + bind-mount paths). You do **not** set expanded `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` for Compose to work.
 
-**VPS warning:** `shopware-cli project create` writes `COMPOSE_PROJECT_NAME=sw-shop-…` into shop-root `.env` for local `project dev`. That env var **overrides** Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). On the VPS, **comment out** that line with `fyrst-cli shopware env init --vps` (or by hand). Flex does **not** delete it on `composer require` (create owns the local flow).
+**Create footgun:** `shopware-cli project create` writes `COMPOSE_PROJECT_NAME=sw-shop-…` into shop-root `.env` for local `project dev`. That env var **overrides** Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). `fyrst-cli shopware env init` **always** comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…` (laptop and VPS). Flex does **not** delete it on `composer require` — run env init (or comment that line out by hand).
 
 After create + `composer require`, finish shop-specific `.env` values with `fyrst-cli shopware env init`:
 
 ```bash
 fyrst-cli shopware env init --shop-id acme
-# VPS: add --vps --env live --image ghcr.io/example/acme
+# always comments out create's COMPOSE_PROJECT_NAME=sw-shop-…
+# VPS extras: --env live --image ghcr.io/example/acme
 ```
 
 `--shop-id` is required unless already non-empty. fyrst-cli merges missing keys from `.env.example` and does not invent MYSQL passwords or `APP_URL`. It does not generate `APP_SECRET` (`shopware-cli project create` already writes it). See `deploy/README.md` after Flex copies it, and [fyrst-cli](https://github.com/fyrst-dev/cli). Same loader for every `fyrst-cli shopware` verb.
@@ -197,7 +199,7 @@ Named volumes `mysql_data` / `redis_data` are scoped by the derived Compose proj
 | `VPS_HOST` / `VPS_USER` / `VPS_PATH` | SSH target and checkout path |
 | `SSH_KNOWN_HOSTS` | Recommended instead of blindly accepting host keys |
 
-Placeholders live in the Flex-copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, and `.env.example`. Flex may append SoT keys to `.env`; then run `fyrst-cli shopware env init --shop-id <slug>` (VPS: `--vps`). Put consumer identity and `APP_URL` in `.env` / `.env.prod`. Put laptop SSH in `.env.local`.
+Placeholders live in the Flex-copied `.github/workflows/cd.yaml`, `.gitlab-ci.yaml`, and `.env.example`. Flex may append SoT keys to `.env`; then run `fyrst-cli shopware env init --shop-id <slug>` (always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`). Put consumer identity and `APP_URL` in `.env` / `.env.prod`. Put laptop SSH in `.env.local`.
 
 GitLab still looks for `.gitlab-ci.yml` by default — set Settings → CI/CD → CI/CD configuration file to `.gitlab-ci.yaml`. GitHub Actions and shopware-cli load the `.yaml` names directly.
 
@@ -271,7 +273,7 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 
 Operators call fyrst-cli 0.1.0+ (recipe `deploy/*.sh` wrappers are removed):
 
-- `fyrst-cli shopware env init` — Flex `env` appends safe SoT keys; fyrst-cli fills shop id / env, optional `IMAGE`, and `--vps` comments create’s `COMPOSE_PROJECT_NAME=sw-shop-…`. Does not generate `APP_SECRET` (`shopware-cli project create` already writes it).
+- `fyrst-cli shopware env init` — Flex `env` appends safe SoT keys; fyrst-cli fills shop id / env, optional `IMAGE`, and **always** comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`. Does not generate `APP_SECRET` (`shopware-cli project create` already writes it).
 - `fyrst-cli shopware deploy release` — also invoked from CI (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`). `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`.
 - `fyrst-cli shopware deploy rollback`
 - `fyrst-cli shopware sync {capture\|apply\|pull}` — VPS only: live → staging/playground/dev copy of DB + host dirs (SSH + `shopware-cli project dump` + rsync; **no S3**; paths from `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV`, optional `SHOPWARE_DATA_BASE` / `SHOPWARE_DATA_ROOT`)
@@ -448,7 +450,7 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Skipping the fyrst-dev/recipes endpoint before `composer require` (Flex copies nothing)
 - Letting the fyrst Flex recipe copy or overwrite `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` / `.shopware-project.yml`
 - Renaming create’s `.shopware-project.yml` to `.yaml` (shopware-cli accepts both)
-- Leaving create’s `COMPOSE_PROJECT_NAME=sw-shop-…` in the VPS `.env` (it overrides Compose `name:`; use `fyrst-cli shopware env init --vps`)
+- Leaving create’s `COMPOSE_PROJECT_NAME=sw-shop-…` uncommented in `.env` (it overrides Compose `name:`; `fyrst-cli shopware env init` always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`)
 - Putting real secrets in the Flex env block (empty shop id only; operators fill via `fyrst-cli shopware env init` or by hand)
 - Forcing a registry pull on a same-host tag-and-load (`pull_policy: always` without `PULL_POLICY=never` / `SKIP_PULL=1`)
 - Deploying the VPS from the CLI-managed root `compose.yaml` (use `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`)

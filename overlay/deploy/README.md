@@ -18,9 +18,10 @@
 #
 # WARNING: `shopware-cli project create` writes `COMPOSE_PROJECT_NAME=sw-shop-…`
 # into shop-root `.env` for local `project dev`. That env var **overrides**
-# Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`). On the VPS,
-# **comment out** that line: `fyrst-cli shopware env init --vps` (or by hand).
-# Flex does not delete it on `composer require` (create owns the local flow).
+# Compose `name:` (`${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}`).
+# `fyrst-cli shopware env init` **always** comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`
+# (laptop and VPS). Flex does not delete it on
+# `composer require` — run env init (or comment that line out by hand).
 # `fyrst-cli shopware deploy release` warns when the value does not match shop id + deploy env.
 # After recipe changes: `composer recipes:update fyrst/shopware-cd` then
 # `fyrst-cli shopware env init` (or merge new keys from `.env.example` by hand).
@@ -43,7 +44,7 @@ CI runs `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` /
 
 | Command | Role |
 | --- | --- |
-| `fyrst-cli shopware env init` | Finish shop-root `.env` after create + Flex |
+| `fyrst-cli shopware env init` | Finish shop-root `.env` after create + Flex (always comments out create’s `COMPOSE_PROJECT_NAME`) |
 | `fyrst-cli shopware deploy release` | Pull image, recreate the VPS stack |
 | `fyrst-cli shopware deploy rollback` | Re-deploy `IMAGE` from `.previous-tag` |
 | `fyrst-cli shopware sync capture` | Copy bind-mount trees into a workdir |
@@ -80,14 +81,14 @@ SHOPWARE_DATA_BASE=/var/lib/shopware/data
 Finish shop-specific values **without** replacing the whole file:
 
 ```bash
-# laptop / after composer require
+# after composer require (laptop or VPS) — always comments out create's COMPOSE_PROJECT_NAME
 fyrst-cli shopware env init --shop-id acme
 
-# VPS: set identity, optional IMAGE, comment out create's COMPOSE_PROJECT_NAME
-fyrst-cli shopware env init --shop-id acme --env live --vps --image ghcr.io/fyrst-dev/shop-name
+# VPS: set identity + optional IMAGE (strip is always on)
+fyrst-cli shopware env init --shop-id acme --env live --image ghcr.io/fyrst-dev/shop-name
 
 # preview
-fyrst-cli shopware env init --shop-id acme --vps --dry-run
+fyrst-cli shopware env init --shop-id acme --dry-run
 ```
 
 `--shop-id` is required unless `SHOPWARE_SHOP_ID` is already non-empty.
@@ -107,7 +108,7 @@ from `.env.example` without clobbering existing non-empty values. It does
 3. Finish `.env` (Flex may already have appended SoT keys). `chmod 600 .env`.
 
    ```bash
-   fyrst-cli shopware env init --shop-id acme --env live --vps --image ghcr.io/fyrst-dev/shop-name
+   fyrst-cli shopware env init --shop-id acme --env live --image ghcr.io/fyrst-dev/shop-name
    # equivalent keys:
    # SHOPWARE_SHOP_ID=acme
    # SHOPWARE_DEPLOY_ENV=live          # this host's role
@@ -120,11 +121,11 @@ from `.env.example` without clobbering existing non-empty values. It does
    derives those expanded strings when unset (and prefers them when set)
    for logs and tools.
 
-   **Do not copy create’s `COMPOSE_PROJECT_NAME=sw-shop-…` onto the VPS.**
-   That line overrides Compose `name:`. Comment it out with
-   `fyrst-cli shopware env init --vps` (or by hand). Local `shopware-cli project dev`
-   can keep it; Flex does not delete it on `composer require` (create owns
-   the local flow).
+   **Do not leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` uncommented.**
+   That line overrides Compose `name:`. `fyrst-cli shopware env init`
+   always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…` (laptop and VPS).
+   Flex does not delete it on `composer require` — run env init (or comment
+   it out by hand).
 4. Create `.env.prod` (may be empty) so `deploy/compose.prod.yaml` can mount it.
 5. Set `IMAGE` to the registry repository CI pushes (example: `ghcr.io/fyrst-dev/shop-name`)
    (`--image` on `env init`, or by hand).

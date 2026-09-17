@@ -205,10 +205,15 @@ foreach ([
 }
 fyrst_assert(
     str_contains($overlayExample, '--shop-id')
-        && str_contains($overlayExample, '--vps')
         && str_contains($overlayExample, '--image')
-        && str_contains($overlayExample, '--dry-run'),
-    'overlay/.env.example documents env init identity flags'
+        && str_contains($overlayExample, '--dry-run')
+        && !str_contains($overlayExample, '--vps'),
+    'overlay/.env.example documents env init identity flags without --vps'
+);
+fyrst_assert(
+    str_contains($overlayExample, 'always comments out create')
+        && str_contains($overlayExample, 'COMPOSE_PROJECT_NAME=sw-shop'),
+    'overlay/.env.example documents env init always-strip of create COMPOSE_PROJECT_NAME'
 );
 fyrst_assert(
     str_contains($overlayExample, 'APP_SECRET='),
@@ -240,10 +245,16 @@ fyrst_assert(
 );
 fyrst_assert(
     str_contains($deployReadme, 'fyrst-cli shopware env init --shop-id acme')
-        && str_contains($deployReadme, '--vps')
         && str_contains($deployReadme, '--image')
-        && str_contains($deployReadme, '--dry-run'),
-    'overlay/deploy/README.md documents env init identity / IMAGE / --vps / --dry-run'
+        && str_contains($deployReadme, '--dry-run')
+        && !str_contains($deployReadme, '--vps'),
+    'overlay/deploy/README.md documents env init identity / IMAGE / --dry-run without --vps'
+);
+fyrst_assert(
+    str_contains($deployReadme, 'always comments out create')
+        && str_contains($deployReadme, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && !str_contains($deployReadme, 'can keep it'),
+    'overlay/deploy/README.md documents env init always-strip; laptop does not keep create COMPOSE_PROJECT_NAME'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $deployReadme)
@@ -383,8 +394,10 @@ fyrst_assert(
     'README documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($readme, 'fyrst-cli shopware env init --vps'),
-    'README documents fyrst-cli shopware env init --vps'
+    str_contains($readme, 'always comments out create')
+        && str_contains($readme, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && !str_contains($readme, '--vps'),
+    'README documents env init always-strip of create COMPOSE_PROJECT_NAME without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $readme)
@@ -676,8 +689,10 @@ fyrst_assert(
     'CREATE.md documents the Flex env marker block'
 );
 fyrst_assert(
-    str_contains($create, 'fyrst-cli shopware env init --vps'),
-    'CREATE.md documents fyrst-cli shopware env init --vps'
+    str_contains($create, 'always comments out create')
+        && str_contains($create, 'COMPOSE_PROJECT_NAME=sw-shop')
+        && !str_contains($create, '--vps'),
+    'CREATE.md documents env init always-strip of create COMPOSE_PROJECT_NAME without --vps'
 );
 fyrst_assert(
     (bool) preg_match('/does (?:\*\*)?not(?:\*\*)? generate.{0,40}APP_SECRET/is', $create)
@@ -954,6 +969,14 @@ foreach ([
     fyrst_assert(
         !str_contains($text, 'openssl rand'),
         "{$name} does not openssl-generate APP_SECRET"
+    );
+    fyrst_assert(
+        !str_contains($text, '--vps'),
+        "{$name} has no --vps flag"
+    );
+    fyrst_assert(
+        str_contains($text, 'always comments out'),
+        "{$name} documents env init always-strip of COMPOSE_PROJECT_NAME"
     );
 }
 
