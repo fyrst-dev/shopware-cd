@@ -1,9 +1,9 @@
 # VPS-only Compose overlay. CI / fyrst-cli shopware deploy release adds this
 # file so the host never rebuilds the image (assets were compiled in CI).
 #
-# Invoke from the shop root:
-#   docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml pull
-#   docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml up -d --no-build
+# Invoke from the shop root (same --env-file stack as fyrst-cli; omit a flag if missing):
+#   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml pull
+#   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml up -d --no-build
 #
 # pull_policy default is always — correct after CI pushes IMAGE:IMAGE_TAG to a
 # registry. Same-host tag-and-load (local E2E / air-gap) never pushed that tag,

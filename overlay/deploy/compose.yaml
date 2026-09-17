@@ -2,17 +2,21 @@
 # shopware-cli project create owns the shop-root compose.yaml used by
 # `shopware-cli project dev`. This file is only the prod/CD stack.
 #
-# Invoke from the shop root (COMPOSE_DIR). Pass --env-file .env so interpolation
-# reads shop-root `.env` (the compose file lives under deploy/, so Compose's
-# default `.env` lookup would be deploy/.env).
-#   docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml ...
+# Invoke from the shop root (COMPOSE_DIR). VPS Compose naming SoT is this
+# file's `name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` with host env
+# files loaded. Pass --env-file .env then .env.local then .env.prod (if
+# present) — the compose file lives under deploy/, so Compose's default
+# `.env` lookup would be deploy/.env. Raw Compose must use those same
+# --env-file flags (omit a flag if that host file is missing).
+#   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml ...
 #
 # Production overrides: deploy/compose.prod.yaml
 # VPS pull/no-build:    deploy/compose.vps.yaml
 #
 # Paths (build context, env_file) are relative to this file under deploy/;
-# shop root is `..`. Finish shop-root .env with fyrst-cli shopware env init
-# (or copy .env.example → .env by hand). No real secrets belong here.
+# shop root is `..`. Finish shared .env + host .env.local with
+# fyrst-cli shopware env init (or copy .env.example → .env by hand).
+# No real secrets belong here.
 #
 # Bundled MySQL: service name `mysql` (DATABASE_URL host = mysql).
 # External DB:   set DATABASE_URL to the DBaaS DSN, delete or comment out
@@ -24,23 +28,30 @@
 #   worker     — messenger:consume
 #   scheduler  — scheduled-task:run
 #
-# Source of truth: SHOPWARE_SHOP_ID + SHOPWARE_DEPLOY_ENV in shop-root .env.
-# Compose interpolates project name and bind-mount paths from those two (plus
-# optional SHOPWARE_DATA_BASE). COMPOSE_PROJECT_NAME / SHOPWARE_DATA_ROOT are
-# not required here — leave them unset unless a script/tool needs the expanded
-# strings. Nested defaults like ${ROOT:-/base/${SHOP_ID}/...} do not expand
-# in Compose; these are three separate interpolations concatenated with /.
+# Source of truth: SHOPWARE_SHOP_ID in shared committed .env;
+# SHOPWARE_DEPLOY_ENV + COMPOSE_PROJECT_NAME=<shop-id>-<env> in host
+# .env.local / .env.prod. VPS Compose naming SoT is this `name:` with those
+# host env files loaded (--env-file .env then .env.local then .env.prod if
+# present). Local and VPS use
+# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV} (acme-dev / acme-live) — not
+# folder basename, not shopware-<shop-id>.
+# env init sets gitignored compose.override.yaml `name:` for
+# shopware-cli project dev. Compose interpolates bind-mount paths from
+# shop id + env (plus optional SHOPWARE_DATA_BASE). Nested defaults
+# like ${ROOT:-/base/${SHOP_ID}/...} do not expand in Compose; these are
+# three separate interpolations concatenated with /.
 #
-# Project name (unique on this Docker host):
-#   ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}   e.g. acme-live
-# Scopes named volumes mysql_data / redis_data
+# VPS stack name: ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}  e.g. acme-live
+# via this `name:` (SoT) with host env files loaded.
+# Named volumes mysql_data / redis_data on the VPS are prefixed by
+# ${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}
 # (acme-live_mysql_data vs acme-staging_mysql_data).
-# Do not hardcode `name: shopware` (collides when several shops/envs share a host).
-# Do not set COMPOSE_PROJECT_NAME= (empty) in .env — that env var overrides name:.
-# shopware-cli project create writes COMPOSE_PROJECT_NAME=sw-shop-… into .env
-# for local `project dev`. That value also overrides name:. fyrst-cli shopware
-# env init always comments out that line so Compose uses shop id + deploy env.
-# This recipe does not delete it on composer require (run env init).
+# Do not hardcode `name: shopware` (bare). Local and VPS are <shop-id>-<env>.
+# Do not put COMPOSE_PROJECT_NAME in shared .env (including empty) — that
+# env var would override this `name:`. shopware-cli project create writes
+# COMPOSE_PROJECT_NAME=sw-shop-… into .env. env init strips that line and
+# writes COMPOSE_PROJECT_NAME=<shop-id>-<env> to host .env.local.
+# This recipe does not strip it on composer require (run env init).
 #
 # Runtime uploads are bind mounts (not named volumes):
 #   ${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}
@@ -51,7 +62,7 @@
 #   chown -R 82:82 ${DATA}
 # mysql_data / redis_data stay named volumes (auto-prefixed by project name).
 
-name: "${SHOPWARE_SHOP_ID:?Set SHOPWARE_SHOP_ID in .env}-${SHOPWARE_DEPLOY_ENV:?Set SHOPWARE_DEPLOY_ENV in .env}"
+name: "${SHOPWARE_SHOP_ID:?Set SHOPWARE_SHOP_ID in .env}-${SHOPWARE_DEPLOY_ENV:?Set SHOPWARE_DEPLOY_ENV in .env.local}"
 
 x-shopware: &shopware
     image: ${IMAGE:?Set IMAGE in .env}:${IMAGE_TAG:-latest}
@@ -98,7 +109,7 @@ services:
             start_period: 60s
 
     # One-shot install/update. Never compiles themes/assets (those are in the image).
-    #   docker compose --env-file .env -f deploy/compose.yaml --profile setup run --rm setup
+    #   docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml --profile setup run --rm setup
     setup:
         <<: *shopware
         profiles: ["setup"]
