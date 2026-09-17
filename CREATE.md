@@ -25,7 +25,8 @@ composer require shopware/docker shopware/deployment-helper fyrst/shopware-cd
 # each VPS / laptop: fyrst-cli 0.1.0+
 curl -fsSL https://raw.githubusercontent.com/fyrst-dev/cli/main/scripts/install.sh | bash
 fyrst-cli shopware env init --shop-id <slug>
-# VPS: fyrst-cli shopware env init --shop-id <slug> --vps
+# always comments out create's COMPOSE_PROJECT_NAME=sw-shop-…
+# VPS extras: --env live --image ghcr.io/example/acme
 ```
 
 Prefer Composer inside the web container when it is running: `docker compose exec web composer …`.
@@ -42,7 +43,7 @@ Prefer Composer inside the web container when it is running: `docker compose exe
 - [ ] Flex may have appended a `###> fyrst/shopware-cd ###` SoT block to `.env` (empty shop id). It does **not** overwrite create’s whole `.env`. Ran `fyrst-cli shopware env init --shop-id <slug>` (see `deploy/README.md`)
 - [ ] Shop files: fyrst-cli loads `.env`, then `.env.local` if present (laptop SSH / extras), then `.env.prod` if present (VPS). Later file wins. Identity keys cannot be overridden by later files. Same loader for every `fyrst-cli shopware` verb. CI `VPS_*` / `SSH_PRIVATE_KEY` stay secrets — they are not shop `.env`.
 - [ ] Identity (locked hybrid): required `SHOPWARE_SHOP_ID` (stable shop slug, same on live/staging/laptop) + `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …). Optional `SHOPWARE_DATA_BASE`. `COMPOSE_PROJECT_NAME` and `SHOPWARE_DATA_ROOT` are **optional** — Docker Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `SHOPWARE_DATA_ROOT=${SHOPWARE_DATA_BASE:-/var/lib/shopware/data}/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}`. Compose uses those SoT vars directly. Do not hardcode Compose project name `shopware`.
-- [ ] VPS `.env` does **not** keep create’s `COMPOSE_PROJECT_NAME=sw-shop-…` line (that **overrides** Compose `name:`). Comment it out with `fyrst-cli shopware env init --vps` (or by hand). Flex does not delete it on `composer require` (create owns local `project dev`).
+- [ ] `.env` does **not** keep create’s uncommented `COMPOSE_PROJECT_NAME=sw-shop-…` line (that **overrides** Compose `name:`). `fyrst-cli shopware env init` always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…` (laptop and VPS). Flex does not delete it on `composer require` — run env init (or comment it out by hand).
 - [ ] Same-host tag-and-load / air-gap: `PULL_POLICY=never` and `SKIP_PULL=1` (or `fyrst-cli shopware deploy release --skip-pull`). Default `pull_policy` is `always` after CI pushed the tag.
 - [ ] Runtime DB + media/files stay **out of git** and **out of the image**. VPS **bind mounts** under the derived shop/env root (default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}/{files,media,thumbnail,theme,sitemap}`). Named volumes remain only for `mysql_data` / `redis_data` (scoped by the derived Compose project name). VPS env copy is `fyrst-cli shopware sync {capture|apply|pull}` (SSH + dump + rsync of those host dirs; dump is `shopware-cli project dump`; paths from shop id + deploy env). **No S3.** Local `shopware-cli project dev` uses `fyrst-cli shopware sync local` (rsync path remap into `files/` and `public/{media,thumbnail,theme,sitemap}`; remote auto `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`; fyrst-cli refuses `--data all`) — **not** VPS `sync {capture|apply|pull}`.
 - [ ] VPS: `mkdir -p "$SHOPWARE_DATA_ROOT"/{files,media,thumbnail,theme,sitemap}` and `chown` to uid 82 (www-data in docker-base) — shop/env root derived from shop id + deploy env, not a global `/var/lib/shopware/data`
@@ -64,7 +65,7 @@ Fill placeholders — never commit values.
 - [ ] Runtime: `SHOPWARE_SHOP_ID` (stable shop slug) — **required** (`fyrst-cli shopware env init --shop-id <slug>`)
 - [ ] Runtime: `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / …) — **required**
 - [ ] Optional: `SHOPWARE_DATA_BASE` (prefix `/var/lib/shopware/data` when unset)
-- [ ] Optional: `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` — Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` when unset. Compose uses those SoT vars directly. Do **not** leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` on the VPS.
+- [ ] Optional: `COMPOSE_PROJECT_NAME` / `SHOPWARE_DATA_ROOT` — Compose and sync derive `COMPOSE_PROJECT_NAME=${SHOPWARE_SHOP_ID}-${SHOPWARE_DEPLOY_ENV}` and `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` when unset. Compose uses those SoT vars directly. Do **not** leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` uncommented (`fyrst-cli shopware env init` always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`).
 - [ ] Laptop extras: `.env.local` with `SHOPWARE_SSH_HOST` / `SHOPWARE_SSH_USER` / `SHOPWARE_SSH_KEY` (host defaults to alias `live` when unset)
 - [ ] VPS extras: `.env.prod` when the VPS needs values that are not in `.env`
 - [ ] Optional: `SHOPWARE_REMOTE_DATA_ROOT` if live data is not `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`
@@ -93,7 +94,7 @@ Fill placeholders — never commit values.
 - [ ] Do not expect overlay files to live in the Flex recipe `root/` (they live in this package’s `overlay/`)
 - [ ] Do not let Flex copy or overwrite CLI-owned `compose.yaml`, `.gitignore`, or `.shopware-project.yaml` / `.shopware-project.yml`
 - [ ] Do not rename create’s `.shopware-project.yml` to `.yaml` (shopware-cli accepts both)
-- [ ] Do not leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` in the VPS `.env` (it overrides Compose `name:`; use `fyrst-cli shopware env init --vps`)
+- [ ] Do not leave create’s `COMPOSE_PROJECT_NAME=sw-shop-…` uncommented in `.env` (it overrides Compose `name:`; `fyrst-cli shopware env init` always comments out create’s `COMPOSE_PROJECT_NAME=sw-shop-…`)
 - [ ] Do not put real secrets in the Flex env block (empty shop id only)
 - [ ] Do not deploy the VPS from root `compose.yaml` (use `deploy/compose.yaml` + `deploy/compose.prod.yaml` + `deploy/compose.vps.yaml`)
 - [ ] Do not compile themes/assets on the VPS
