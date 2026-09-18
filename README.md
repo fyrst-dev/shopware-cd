@@ -183,7 +183,7 @@ Named volumes `mysql_data` / `redis_data` on the VPS are scoped by `${SHOPWARE_S
 | Name | Purpose |
 | --- | --- |
 | `APP_URL` / `SALES_CHANNEL_URL` | Public shop URL. Rewrite uses `APP_URL` only. Default post-deploy probe is `APP_URL` (trim trailing slash) + `/api/_info/health-check` |
-| `DEPLOY_HEALTH_URL` | Optional override for that probe. Deprecated alias: `SMOKE_URL` (still works briefly; fyrst-cli prints a deprecation note). **Live:** `deploy release` refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL |
+| `DEPLOY_HEALTH_URL` | Optional override for that probe. **Live:** `deploy release` refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL |
 | `ALLOW_NO_DEPLOY_HEALTH` | Live escape hatch (`1`, same as `--allow-no-deploy-health`). Do not set this in production CI unless you accept no probe |
 | `APP_SECRET` | Persistent secret (`shopware-cli project create` writes it; `fyrst-cli shopware env init` does not rewrite it) |
 | `DATABASE_URL` | MySQL/MariaDB DSN |
@@ -216,7 +216,7 @@ Push to GitHub and/or GitLab on `main` (or a `v*` tag):
 
 1. **Build** — `docker buildx` with BuildKit secrets; `shopware-cli project ci` inside the `shopware-cli` image.
 2. **Push** — `:git-sha` always; `:latest` on default branch; `:semver` on version tags.
-3. **Deploy** — SSH to the VPS, then `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`): pull image, Compose up, one-shot setup, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`; deprecated alias `SMOKE_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Managed host (`DEPLOY_TARGET=managed`) is **planned / not implemented** and is not a supported CI switch.
+3. **Deploy** — SSH to the VPS, then `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`): pull image, Compose up, one-shot setup, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Managed host (`DEPLOY_TARGET=managed`) is **planned / not implemented** and is not a supported CI switch.
 
 Local day-to-day:
 
@@ -281,7 +281,7 @@ Shops must configure the endpoint **before** `composer require` (see [Primary pa
 Operators call fyrst-cli 0.1.0+ (recipe `deploy/*.sh` wrappers are removed):
 
 - `fyrst-cli shopware env init` — Flex `env` appends safe SoT keys; fyrst-cli fills shop id, optional `IMAGE`, **strips** create’s `COMPOSE_PROJECT_NAME=sw-shop-…` from shared `.env`, writes `SHOPWARE_DEPLOY_ENV` and `COMPOSE_PROJECT_NAME=<shop-id>-<env>` to host `.env.local`, and sets gitignored `compose.override.yaml` `name:` for `shopware-cli project dev`. Does not generate `APP_SECRET` (`shopware-cli project create` already writes it).
-- `fyrst-cli shopware deploy release` — also invoked from CI (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`). `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`. After recreate, GET `DEPLOY_HEALTH_URL` or default `APP_URL` (trim trailing slash) + `/api/_info/health-check`. **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Deprecated alias: `SMOKE_URL`.
+- `fyrst-cli shopware deploy release` — also invoked from CI (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`). `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`. After recreate, GET `DEPLOY_HEALTH_URL` or default `APP_URL` (trim trailing slash) + `/api/_info/health-check`. **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL.
 - `fyrst-cli shopware deploy rollback`
 - `fyrst-cli shopware sync {capture\|apply\|pull}` — VPS only: live → staging/playground/dev copy of DB + host dirs (SSH + `shopware-cli project dump` + rsync; **no S3**; paths from `SHOPWARE_SHOP_ID` + `SHOPWARE_DEPLOY_ENV`, optional `SHOPWARE_DATA_BASE` / `SHOPWARE_DATA_ROOT`)
 - `fyrst-cli shopware sync local` — laptop only: live media/files into `shopware-cli project dev` (rsync path remap; remote default `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/live`; **not** VPS `sync {capture\|apply\|pull}`; fyrst-cli refuses `--data all`)
@@ -480,7 +480,6 @@ This package’s GitHub workflow is package tests only (`.github/workflows/ci.ym
 - Cron that pushes into live (the consumer pulls from live)
 - Treating managed-host deploy as a supported CI path (`DEPLOY_TARGET=managed` is planned / not implemented)
 - Going live without a resolvable post-deploy probe (`APP_URL` + `/api/_info/health-check`, or `DEPLOY_HEALTH_URL`) unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`
-- Treating `SMOKE_URL` as the only post-deploy probe (override is `DEPLOY_HEALTH_URL`; `SMOKE_URL` is a deprecated alias)
 
 ## Roadmap (ops)
 

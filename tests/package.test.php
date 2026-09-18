@@ -1212,18 +1212,9 @@ foreach ($healthDocs as $name => $text) {
         "{$name} documents non-live probe optional"
     );
     fyrst_assert(
-        !preg_match('/Optional `SMOKE_URL`/', $text)
-            && !preg_match('/Optional:\\s*\\n#\\s+SMOKE_URL\\s*$/m', $text)
-            && !(str_contains($text, 'SMOKE_URL') && !str_contains($text, 'DEPLOY_HEALTH_URL')),
-        "{$name} does not rely solely on SMOKE_URL wording"
+        !str_contains($text, 'SMOKE_URL'),
+        "{$name} does not mention SMOKE_URL"
     );
-    if (str_contains($text, 'SMOKE_URL')) {
-        fyrst_assert(
-            str_contains($text, 'DEPLOY_HEALTH_URL')
-                && (bool) preg_match('/deprecated/i', $text),
-            "{$name} treats SMOKE_URL as a deprecated alias, not the probe"
-        );
-    }
 }
 fyrst_assert(
     str_contains($overlayExample, 'DEPLOY_HEALTH_URL=')

@@ -44,14 +44,11 @@
 # Post-deploy probe (fyrst-cli shopware deploy release, on the VPS):
 #   Default: APP_URL (trim trailing slash) + /api/_info/health-check
 #   Override: DEPLOY_HEALTH_URL
-#   Deprecated alias: SMOKE_URL (still works briefly; fyrst-cli prints a
-#                     deprecation note)
 #   Live: release refuses without a resolvable probe URL unless
 #         --allow-no-deploy-health / ALLOW_NO_DEPLOY_HEALTH=1
 #   Non-live: probe optional if no URL
 # Optional CI-side GET after SSH (runner, not the VPS):
 #   DEPLOY_HEALTH_URL
-#   SMOKE_URL                 deprecated alias for that CI-side GET
 #
 # Managed host deploy is planned / not implemented (recipes #19).
 # DEPLOY_TARGET=managed is not a supported switch. There is no deploy_managed
@@ -231,19 +228,18 @@ deploy:
                     cd '${VPS_PATH}'
                     git fetch --quiet origin
                     git checkout --detach '${CI_COMMIT_SHA}'
-                    export IMAGE='${IMAGE}' IMAGE_TAG='${IMAGE_TAG}' COMPOSE_DIR='${VPS_PATH}' DEPLOY_HEALTH_URL='${DEPLOY_HEALTH_URL:-}' SMOKE_URL='${SMOKE_URL:-}'
+                    export IMAGE='${IMAGE}' IMAGE_TAG='${IMAGE_TAG}' COMPOSE_DIR='${VPS_PATH}' DEPLOY_HEALTH_URL='${DEPLOY_HEALTH_URL:-}'
                     fyrst-cli shopware deploy release"
         -   |
-            PROBE_URL="${DEPLOY_HEALTH_URL:-${SMOKE_URL:-}}"
-            if [ -n "${PROBE_URL}" ]; then
+            if [ -n "${DEPLOY_HEALTH_URL:-}" ]; then
                 apk add --no-cache curl
                 for i in $(seq 1 20); do
-                    if curl -fsS "$PROBE_URL" >/dev/null; then
+                    if curl -fsS "$DEPLOY_HEALTH_URL" >/dev/null; then
                         echo "Health OK"
                         exit 0
                     fi
                     sleep 3
                 done
-                echo "Health check failed for ${PROBE_URL}" >&2
+                echo "Health check failed for ${DEPLOY_HEALTH_URL}" >&2
                 exit 1
             fi

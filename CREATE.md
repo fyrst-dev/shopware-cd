@@ -63,7 +63,7 @@ Fill placeholders — never commit values.
 - [ ] CI: registry login (`REGISTRY_USERNAME` / `REGISTRY_PASSWORD`, or platform defaults)
 - [ ] CI: `SSH_PRIVATE_KEY`, `VPS_HOST`, `VPS_USER`, `VPS_PATH` (Compose primary)
 - [ ] CI: `SSH_KNOWN_HOSTS` (recommended)
-- [ ] Runtime (`.env` / `.env.local` / `.env.prod`): `APP_URL`, `APP_SECRET`, `DATABASE_URL`. Rewrite uses `APP_URL` only. Default post-deploy probe is `APP_URL` (trim trailing slash) + `/api/_info/health-check`. Override: `DEPLOY_HEALTH_URL`. Deprecated alias: `SMOKE_URL` (still works briefly; fyrst-cli prints a deprecation note). **Live:** `fyrst-cli shopware deploy release` refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. `APP_SECRET` comes from `shopware-cli project create`; `fyrst-cli shopware env init` does not generate it.
+- [ ] Runtime (`.env` / `.env.local` / `.env.prod`): `APP_URL`, `APP_SECRET`, `DATABASE_URL`. Rewrite uses `APP_URL` only. Default post-deploy probe is `APP_URL` (trim trailing slash) + `/api/_info/health-check`. Override: `DEPLOY_HEALTH_URL`. **Live:** `fyrst-cli shopware deploy release` refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. `APP_SECRET` comes from `shopware-cli project create`; `fyrst-cli shopware env init` does not generate it.
 - [ ] Runtime (shared `.env`): `SHOPWARE_SHOP_ID` (stable shop slug) — **required** (`fyrst-cli shopware env init --shop-id <slug>`)
 - [ ] Runtime (host `.env.local` / `.env.prod`): `SHOPWARE_DEPLOY_ENV` (`live` / `staging` / `dev` / …) — **required**. env init writes it to `.env.local`. Do not lock a real value in shared `.env`.
 - [ ] Optional: `SHOPWARE_DATA_BASE` (prefix `/var/lib/shopware/data` when unset)
@@ -82,7 +82,7 @@ Fill placeholders — never commit values.
 
 - [ ] Push to GitHub and/or GitLab (`main`)
 - [ ] Build → push `:sha` (+ `:latest` on `main`) succeeds
-- [ ] Deploy job SSHs to the VPS, then `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`): pull, Compose up, one-shot setup, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`; deprecated alias `SMOKE_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL
+- [ ] Deploy job SSHs to the VPS, then `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` / `COMPOSE_DIR`): pull, Compose up, one-shot setup, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL
 - [ ] Storefront + admin verified. Health probe is `APP_URL` + `/api/_info/health-check` unless `DEPLOY_HEALTH_URL` overrides it
 - [ ] Document shop-specific overrides (external DB, search, CDN) in the shop repo README. Default VPS path has **no S3** — media/files stay on host bind mounts under `/var/lib/shopware/data/${SHOPWARE_SHOP_ID}/${SHOPWARE_DEPLOY_ENV}` (Compose/sync derive that; `SHOPWARE_DATA_ROOT` is optional); live → staging/playground/dev uses `fyrst-cli shopware sync` (shop id + deploy env). Local `shopware-cli project dev` uses `fyrst-cli shopware sync local` (remote auto from `SHOPWARE_SHOP_ID` + `live`).
 
@@ -113,4 +113,3 @@ Fill placeholders — never commit values.
 - [ ] Do not run VPS `fyrst-cli shopware sync {capture|apply|pull}` against local `shopware-cli project dev` (local remap is `fyrst-cli shopware sync local`)
 - [ ] Do not cron a push into live (the consumer pulls from live)
 - [ ] Do not go live without a resolvable post-deploy probe (`APP_URL` + `/api/_info/health-check`, or `DEPLOY_HEALTH_URL`) unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`
-- [ ] Do not treat `SMOKE_URL` as the only post-deploy probe (override is `DEPLOY_HEALTH_URL`; `SMOKE_URL` is a deprecated alias)

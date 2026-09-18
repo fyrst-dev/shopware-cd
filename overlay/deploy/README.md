@@ -53,7 +53,7 @@ CI runs `fyrst-cli shopware deploy release` (existing `IMAGE` / `IMAGE_TAG` /
 **Dump stays `shopware-cli project dump`.** fyrst-cli never dumps.
 
 - `fyrst-cli shopware env init` — finish shared `.env` after create + Flex (strips `COMPOSE_PROJECT_NAME`; writes `SHOPWARE_DEPLOY_ENV` + `COMPOSE_PROJECT_NAME=<shop-id>-<env>` to host `.env.local`; sets gitignored `compose.override.yaml` `name:`)
-- `fyrst-cli shopware deploy release` — pull image, recreate the VPS stack, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`; deprecated alias `SMOKE_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL
+- `fyrst-cli shopware deploy release` — pull image, recreate the VPS stack, then GET the post-deploy probe (default `APP_URL` trim trailing slash + `/api/_info/health-check`; override `DEPLOY_HEALTH_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL
 - `fyrst-cli shopware deploy rollback` — re-deploy `IMAGE` from `.previous-tag`
 - `fyrst-cli shopware sync capture` — copy bind-mount trees into a workdir
 - `fyrst-cli shopware sync apply` — apply that workdir onto this host
@@ -198,7 +198,7 @@ Named volumes become `acme-live_mysql_data`, `acme-staging_mysql_data`, … — 
 
    (via `docker compose --env-file .env --env-file .env.local --env-file .env.prod -f deploy/compose.yaml -f deploy/compose.prod.yaml -f deploy/compose.vps.yaml --profile setup run --rm --pull never setup`)
 5. Recreate `web` with `--no-build`
-6. Post-deploy probe: `GET` `DEPLOY_HEALTH_URL`, or default `APP_URL` (trim trailing slash) + `/api/_info/health-check`. Deprecated alias: `SMOKE_URL` (still works briefly; fyrst-cli prints a deprecation note). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. **Writes `.deployed-tag` only after success.**
+6. Post-deploy probe: `GET` `DEPLOY_HEALTH_URL`, or default `APP_URL` (trim trailing slash) + `/api/_info/health-check`. **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. **Writes `.deployed-tag` only after success.**
 7. On probe failure: always prints
    `IMAGE_TAG=$(cat .previous-tag) fyrst-cli shopware deploy rollback`
    and **auto-runs that rollback when `SHOPWARE_DEPLOY_ENV=live`** (default on). Staging/dev stay manual unless `ROLLBACK_ON_SMOKE_FAIL=1`. Release still exits 1 after a successful auto-rollback so CI does not treat the bad tag as live. First deploys with no `.previous-tag` cannot roll back.
@@ -243,7 +243,7 @@ The helper detects a fresh database vs an existing shop:
 
 ## Rollback
 
-`fyrst-cli shopware deploy rollback` reads `.previous-tag` (refuses if missing/empty), keeps `IMAGE` from env/`.env`, and runs the **same** compose stack and order as release: pull (unless skip) → mysql/redis → setup profile → recreate `web` → extra profiles. `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`. Same post-deploy probe as release (`DEPLOY_HEALTH_URL`, or default `APP_URL` trim trailing slash + `/api/_info/health-check`; deprecated `SMOKE_URL`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Writes `.deployed-tag` only after success.
+`fyrst-cli shopware deploy rollback` reads `.previous-tag` (refuses if missing/empty), keeps `IMAGE` from env/`.env`, and runs the **same** compose stack and order as release: pull (unless skip) → mysql/redis → setup profile → recreate `web` → extra profiles. `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`. Same post-deploy probe as release (`DEPLOY_HEALTH_URL`, or default `APP_URL` trim trailing slash + `/api/_info/health-check`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Writes `.deployed-tag` only after success.
 
 ```bash
 # Always printed on smoke failure; this is the supported one-liner:
@@ -261,7 +261,7 @@ Manual drill (staging): release tag A → release tag B → rollback restores A 
 
 `web` is healthy only when `GET http://127.0.0.1:8000/api/_info/health-check` succeeds **inside the container** (Shopware Core, `auth_required=false`; the path Shopware documents for Docker `HEALTHCHECK`). That fails if Caddy/nginx/FrankenPHP on 8000 is down or PHP-FPM/FrankenPHP does not run the kernel. It does not use the Docker host network.
 
-**Post-deploy probe** (fyrst-cli, from the VPS host after recreate): default `GET` `APP_URL` (trim trailing slash) + `/api/_info/health-check`. Override with `DEPLOY_HEALTH_URL`. Deprecated alias: `SMOKE_URL` (still works briefly; fyrst-cli prints a deprecation note). **Live:** `deploy release` / `deploy rollback` refuse without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL.
+**Post-deploy probe** (fyrst-cli, from the VPS host after recreate): default `GET` `APP_URL` (trim trailing slash) + `/api/_info/health-check`. Override with `DEPLOY_HEALTH_URL`. **Live:** `deploy release` / `deploy rollback` refuse without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL.
 
 FPM/Caddy/nginx `shopware/docker-base` images install `curl`; FrankenPHP may not — the in-container probe falls back to PHP streams. `compose.prod.yaml` uses `start_period: 120s` so a cold VPS after deployment-helper can still become healthy.
 
