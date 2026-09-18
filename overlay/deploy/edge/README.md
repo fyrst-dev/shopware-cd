@@ -65,7 +65,7 @@ widgets.example.com {
 }
 ```
 
-`SMOKE_URL` and healthchecks still use `http://127.0.0.1:${HTTP_PORT}` from the host (or from inside `web`, `http://127.0.0.1:8000/api/_info/health-check`).
+Post-deploy probe (fyrst-cli): default `APP_URL` (trim trailing slash) + `/api/_info/health-check` — that is the public hostname through this Caddy, not loopback. Override with `DEPLOY_HEALTH_URL` if you need a different URL (for example `http://127.0.0.1:${HTTP_PORT}/api/_info/health-check`). **Live:** `deploy release` refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. In-container Docker `HEALTHCHECK` remains `http://127.0.0.1:8000/api/_info/health-check` inside `web`.
 
 ## Go-live checklist
 

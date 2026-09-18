@@ -41,8 +41,16 @@
 #   SSH_KNOWN_HOSTS          recommended
 #   VPS_SSH_PORT             optional, default 22
 #
-# Optional:
-#   SMOKE_URL
+# Post-deploy probe (fyrst-cli shopware deploy release, on the VPS):
+#   Default: APP_URL (trim trailing slash) + /api/_info/health-check
+#   Override: DEPLOY_HEALTH_URL
+#   Live: release refuses without a resolvable probe URL unless
+#         --allow-no-deploy-health / ALLOW_NO_DEPLOY_HEALTH=1
+#   Non-live: probe optional if no URL
+#   Auto-rollback on probe fail: ROLLBACK_ON_FAIL (VPS host env, not a CI secret).
+#     Unset → on for live, off otherwise.
+# Optional CI-side GET after SSH (runner, not the VPS):
+#   DEPLOY_HEALTH_URL
 #
 # Managed host deploy is planned / not implemented (recipes #19).
 # DEPLOY_TARGET=managed is not a supported switch. There is no deploy_managed
@@ -222,18 +230,18 @@ deploy:
                     cd '${VPS_PATH}'
                     git fetch --quiet origin
                     git checkout --detach '${CI_COMMIT_SHA}'
-                    export IMAGE='${IMAGE}' IMAGE_TAG='${IMAGE_TAG}' COMPOSE_DIR='${VPS_PATH}' SMOKE_URL='${SMOKE_URL:-}'
+                    export IMAGE='${IMAGE}' IMAGE_TAG='${IMAGE_TAG}' COMPOSE_DIR='${VPS_PATH}' DEPLOY_HEALTH_URL='${DEPLOY_HEALTH_URL:-}'
                     fyrst-cli shopware deploy release"
         -   |
-            if [ -n "${SMOKE_URL:-}" ]; then
+            if [ -n "${DEPLOY_HEALTH_URL:-}" ]; then
                 apk add --no-cache curl
                 for i in $(seq 1 20); do
-                    if curl -fsS "$SMOKE_URL" >/dev/null; then
-                        echo "Smoke OK"
+                    if curl -fsS "$DEPLOY_HEALTH_URL" >/dev/null; then
+                        echo "Health OK"
                         exit 0
                     fi
                     sleep 3
                 done
-                echo "Smoke check failed for ${SMOKE_URL}" >&2
+                echo "Health check failed for ${DEPLOY_HEALTH_URL}" >&2
                 exit 1
             fi

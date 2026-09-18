@@ -1180,6 +1180,71 @@ foreach (['README.md' => $readme, 'CREATE.md' => $create] as $name => $text) {
     }
 }
 
+$healthDocs = [
+    'README.md' => $readme,
+    'CREATE.md' => $create,
+    'overlay/.env.example' => $overlayExample,
+    'overlay/deploy/README.md' => $deployReadme,
+    'overlay/deploy/edge/README.md' => (string) file_get_contents($root . '/overlay/deploy/edge/README.md'),
+    'overlay/.github/workflows/cd.yaml' => (string) file_get_contents($root . '/overlay/.github/workflows/cd.yaml'),
+    'overlay/.gitlab-ci.yaml' => (string) file_get_contents($root . '/overlay/.gitlab-ci.yaml'),
+];
+foreach ($healthDocs as $name => $text) {
+    fyrst_assert(
+        str_contains($text, 'DEPLOY_HEALTH_URL'),
+        "{$name} documents DEPLOY_HEALTH_URL"
+    );
+    fyrst_assert(
+        str_contains($text, 'APP_URL')
+            && str_contains($text, '/api/_info/health-check')
+            && str_contains($text, 'trim trailing slash'),
+        "{$name} documents APP_URL health default"
+    );
+    fyrst_assert(
+        str_contains($text, '--allow-no-deploy-health')
+            && str_contains($text, 'ALLOW_NO_DEPLOY_HEALTH')
+            && (bool) preg_match('/refus(?:e|es)/i', $text),
+        "{$name} documents live require"
+    );
+    fyrst_assert(
+        str_contains($text, 'Non-live')
+            && str_contains($text, 'optional if no URL'),
+        "{$name} documents non-live probe optional"
+    );
+    fyrst_assert(
+        !str_contains($text, 'SMOKE_URL'),
+        "{$name} does not mention SMOKE_URL"
+    );
+    fyrst_assert(
+        !str_contains($text, 'ROLLBACK_ON_SMOKE_FAIL'),
+        "{$name} does not mention ROLLBACK_ON_SMOKE_FAIL"
+    );
+}
+fyrst_assert(
+    str_contains($overlayExample, 'DEPLOY_HEALTH_URL=')
+        && str_contains($overlayExample, 'ALLOW_NO_DEPLOY_HEALTH=1')
+        && str_contains($overlayExample, 'ROLLBACK_ON_FAIL=1')
+        && !str_contains($overlayExample, 'ROLLBACK_ON_SMOKE_FAIL'),
+    'overlay/.env.example comments DEPLOY_HEALTH_URL=, ALLOW_NO_DEPLOY_HEALTH=1, and ROLLBACK_ON_FAIL=1'
+);
+fyrst_assert(
+    str_contains($deployReadme, 'ROLLBACK_ON_FAIL')
+        && !str_contains($deployReadme, 'ROLLBACK_ON_SMOKE_FAIL'),
+    'overlay/deploy/README.md documents ROLLBACK_ON_FAIL, not ROLLBACK_ON_SMOKE_FAIL'
+);
+foreach (['overlay/.github/workflows/cd.yaml', 'overlay/.gitlab-ci.yaml'] as $rel) {
+    $ci = $healthDocs[$rel];
+    fyrst_assert(
+        str_contains($ci, 'DEPLOY_HEALTH_URL=')
+            && str_contains($ci, 'Default: APP_URL (trim trailing slash) + /api/_info/health-check')
+            && str_contains($ci, '--allow-no-deploy-health')
+            && str_contains($ci, 'ALLOW_NO_DEPLOY_HEALTH=1')
+            && str_contains($ci, 'ROLLBACK_ON_FAIL')
+            && !str_contains($ci, 'ROLLBACK_ON_SMOKE_FAIL'),
+        $rel . ' comments document APP_URL health default, DEPLOY_HEALTH_URL, live require, and ROLLBACK_ON_FAIL'
+    );
+}
+
 if ($failures > 0) {
     fwrite(STDERR, "\n{$failures} assertion(s) failed\n");
     exit(1);
