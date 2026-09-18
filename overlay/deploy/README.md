@@ -201,7 +201,7 @@ Named volumes become `acme-live_mysql_data`, `acme-staging_mysql_data`, … — 
 6. Post-deploy probe: `GET` `DEPLOY_HEALTH_URL`, or default `APP_URL` (trim trailing slash) + `/api/_info/health-check`. **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. **Writes `.deployed-tag` only after success.**
 7. On probe failure: always prints
    `IMAGE_TAG=$(cat .previous-tag) fyrst-cli shopware deploy rollback`
-   and **auto-runs that rollback when `SHOPWARE_DEPLOY_ENV=live`** (default on). Staging/dev stay manual unless `ROLLBACK_ON_SMOKE_FAIL=1`. Release still exits 1 after a successful auto-rollback so CI does not treat the bad tag as live. First deploys with no `.previous-tag` cannot roll back.
+   and **auto-runs that rollback when `SHOPWARE_DEPLOY_ENV=live`** (default on). Staging/dev stay manual unless `ROLLBACK_ON_FAIL=1`. Release still exits 1 after a successful auto-rollback so CI does not treat the bad tag as live. First deploys with no `.previous-tag` cannot roll back.
 
 Manual equivalent:
 
@@ -246,7 +246,7 @@ The helper detects a fresh database vs an existing shop:
 `fyrst-cli shopware deploy rollback` reads `.previous-tag` (refuses if missing/empty), keeps `IMAGE` from env/`.env`, and runs the **same** compose stack and order as release: pull (unless skip) → mysql/redis → setup profile → recreate `web` → extra profiles. `compose run` uses `--pull never` (Compose v5 dropped `--no-build` from the run subcommand). `up` uses `--no-build`. Same post-deploy probe as release (`DEPLOY_HEALTH_URL`, or default `APP_URL` trim trailing slash + `/api/_info/health-check`). **Live:** refuses without a resolvable probe URL unless `--allow-no-deploy-health` / `ALLOW_NO_DEPLOY_HEALTH=1`. **Non-live:** probe optional if no URL. Writes `.deployed-tag` only after success.
 
 ```bash
-# Always printed on smoke failure; this is the supported one-liner:
+# Always printed on probe failure; this is the supported one-liner:
 IMAGE_TAG=$(cat .previous-tag) fyrst-cli shopware deploy rollback
 
 # Preview (no docker)
@@ -255,7 +255,7 @@ fyrst-cli shopware deploy rollback --dry-run
 
 Manual drill (staging): release tag A → release tag B → rollback restores A (`cat .deployed-tag` is A). Keep the previous image on the host (`docker image prune` with care).
 
-`ROLLBACK_ON_SMOKE_FAIL`: unset → **on for `live`, off otherwise**. Set `0`/`false` to force off on live; `1`/`true` to enable on staging.
+`ROLLBACK_ON_FAIL`: unset → **on for `live`, off otherwise**. Set `0`/`false` to force off on live; `1`/`true` to enable on staging.
 
 ## HTTP healthcheck
 

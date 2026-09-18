@@ -1215,11 +1215,22 @@ foreach ($healthDocs as $name => $text) {
         !str_contains($text, 'SMOKE_URL'),
         "{$name} does not mention SMOKE_URL"
     );
+    fyrst_assert(
+        !str_contains($text, 'ROLLBACK_ON_SMOKE_FAIL'),
+        "{$name} does not mention ROLLBACK_ON_SMOKE_FAIL"
+    );
 }
 fyrst_assert(
     str_contains($overlayExample, 'DEPLOY_HEALTH_URL=')
-        && str_contains($overlayExample, 'ALLOW_NO_DEPLOY_HEALTH=1'),
-    'overlay/.env.example comments DEPLOY_HEALTH_URL= and ALLOW_NO_DEPLOY_HEALTH=1'
+        && str_contains($overlayExample, 'ALLOW_NO_DEPLOY_HEALTH=1')
+        && str_contains($overlayExample, 'ROLLBACK_ON_FAIL=1')
+        && !str_contains($overlayExample, 'ROLLBACK_ON_SMOKE_FAIL'),
+    'overlay/.env.example comments DEPLOY_HEALTH_URL=, ALLOW_NO_DEPLOY_HEALTH=1, and ROLLBACK_ON_FAIL=1'
+);
+fyrst_assert(
+    str_contains($deployReadme, 'ROLLBACK_ON_FAIL')
+        && !str_contains($deployReadme, 'ROLLBACK_ON_SMOKE_FAIL'),
+    'overlay/deploy/README.md documents ROLLBACK_ON_FAIL, not ROLLBACK_ON_SMOKE_FAIL'
 );
 foreach (['overlay/.github/workflows/cd.yaml', 'overlay/.gitlab-ci.yaml'] as $rel) {
     $ci = $healthDocs[$rel];
@@ -1227,8 +1238,10 @@ foreach (['overlay/.github/workflows/cd.yaml', 'overlay/.gitlab-ci.yaml'] as $re
         str_contains($ci, 'DEPLOY_HEALTH_URL=')
             && str_contains($ci, 'Default: APP_URL (trim trailing slash) + /api/_info/health-check')
             && str_contains($ci, '--allow-no-deploy-health')
-            && str_contains($ci, 'ALLOW_NO_DEPLOY_HEALTH=1'),
-        $rel . ' comments document APP_URL health default, DEPLOY_HEALTH_URL, and live require'
+            && str_contains($ci, 'ALLOW_NO_DEPLOY_HEALTH=1')
+            && str_contains($ci, 'ROLLBACK_ON_FAIL')
+            && !str_contains($ci, 'ROLLBACK_ON_SMOKE_FAIL'),
+        $rel . ' comments document APP_URL health default, DEPLOY_HEALTH_URL, live require, and ROLLBACK_ON_FAIL'
     );
 }
 
