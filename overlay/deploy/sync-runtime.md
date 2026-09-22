@@ -156,23 +156,14 @@ Overlapping runs are blocked with `flock` on `var/runtime-sync.lock`.
 ## After restore
 
 - fyrst-cli tries `bin/console cache:clear` via compose `web` and **does not fail the sync** if that errors.
-- **Sales-channel domains are not rewritten unless you opt in.** Default behaviour is unchanged: the restored DB still has the source (usually live) `sales_channel_domain.url` rows.
-- **Opt-in rewrite** (staging / playground / dev only — **hard-refused on live**, including `SHOPWARE_ALLOW_LIVE_RESTORE=1`):
+- **Sales-channel hosts.** After the DB restore, on staging / playground / dev, fyrst-cli sync passes the host from `APP_URL` to Shopware `bin/console sales-channel:update:domain` via compose `web` (same `run --rm --pull never --entrypoint php` style as `cache:clear`). This package does not shell that command.
 
   ```bash
-  # replace scheme+host(+port) on every sales_channel_domain.url; keep the path
-  APP_URL=https://staging.example.com
+  # APP_URL=https://staging.example.com → host only
+  bin/console sales-channel:update:domain staging.example.com
   ```
 
-  After the DB restore, sync calls `bin/console fyrst:sales-channel:rewrite-urls` via compose `web` (same `run --rm --pull never --entrypoint php` style as `cache:clear`). Shops need a current `fyrst/shopware-cd` so that command and `FyrstShopwareCdBundle` exist:
-
-  ```bash
-  composer update fyrst/shopware-cd
-  composer recipes:update fyrst/shopware-cd
-  ```
-
-  (`recipes:update` writes `Fyrst\ShopwareCd\FyrstShopwareCdBundle` into `config/bundles.php`.) The command updates `sales_channel_domain.url` only. It does **not** half-update media CDN, plugin `system_config`, or payment/shipping webhook URLs — those still need **manual review**.
-- Without rewrite, `APP_URL` in `.env` is still the destination reminder if you rewrite in admin yourself.
+  It is skipped on live. `SHOPWARE_ALLOW_LIVE_RESTORE=1` does not turn it on. Also skipped when no dump was imported or `APP_URL` is unset. The scheme, port, and path stay as in the dump; only the host changes. The command does **not** update media CDN, plugin `system_config`, or payment/shipping webhook URLs — those still need **manual review**.
 
 ## Safety
 
