@@ -319,7 +319,7 @@ fyrst-cli shopware sync pull --from live --data all --dry-run
 
 Restore/sync refuse `SHOPWARE_DEPLOY_ENV=live` (and a checkout directory named `live`).
 
-Sales-channel domain rewrite after a DB restore uses `APP_URL` on the consumer. Sync then runs `bin/console fyrst:sales-channel:rewrite-urls` (shops need `composer update fyrst/shopware-cd`). Rewrite is **impossible on live** (**hard-refused**, including `SHOPWARE_ALLOW_LIVE_RESTORE=1`). Payment/shipping webhooks still need a manual review. See **[sync-runtime.md](sync-runtime.md)**.
+After a DB restore, fyrst-cli sync passes the host from `APP_URL` to Shopware `bin/console sales-channel:update:domain` (skipped on live; `SHOPWARE_ALLOW_LIVE_RESTORE=1` does not turn it on; scheme, port, and path stay as in the dump). Payment/shipping webhooks still need a manual review. See **[sync-runtime.md](sync-runtime.md)**.
 
 ## Local project dev pull (live → laptop)
 

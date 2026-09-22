@@ -83,7 +83,7 @@ fyrst_assert(
     'suggest.shopware/docker has no fallback wording'
 );
 fyrst_assert(!is_dir($root . '/bin'), 'bin/ removed');
-fyrst_assert(is_dir($root . '/src'), 'src/ contains the Symfony bundle and rewrite command');
+fyrst_assert(is_dir($root . '/src'), 'src/ contains the empty Symfony bundle');
 fyrst_assert(
     is_file($root . '/src/FyrstShopwareCdBundle.php'),
     'FyrstShopwareCdBundle.php is present'
@@ -94,13 +94,23 @@ fyrst_assert(
     'bundle extends Bundle so Flex can auto-discover it'
 );
 fyrst_assert(
-    is_file($root . '/src/Command/RewriteSalesChannelUrlsCommand.php'),
-    'RewriteSalesChannelUrlsCommand.php is present'
+    !str_contains($bundleSrc, 'console.command')
+        && !str_contains($bundleSrc, 'RewriteSalesChannelUrlsCommand'),
+    'bundle does not register a sales-channel rewrite command'
 );
-$commandSrc = (string) file_get_contents($root . '/src/Command/RewriteSalesChannelUrlsCommand.php');
 fyrst_assert(
-    str_contains($commandSrc, 'fyrst:sales-channel:rewrite-urls'),
-    'command name is fyrst:sales-channel:rewrite-urls'
+    !is_file($root . '/src/Command/RewriteSalesChannelUrlsCommand.php'),
+    'RewriteSalesChannelUrlsCommand.php is removed'
+);
+fyrst_assert(!is_dir($root . '/src/Command'), 'src/Command is removed');
+fyrst_assert(!is_dir($root . '/src/SalesChannel'), 'src/SalesChannel is removed');
+fyrst_assert(
+    !is_file($root . '/tests/Command/RewriteSalesChannelUrlsCommandTest.php'),
+    'rewrite command PHPUnit test is removed'
+);
+fyrst_assert(
+    !is_file($root . '/tests/SalesChannel/SalesChannelUrlPlannerTest.php'),
+    'planner PHPUnit test is removed'
 );
 fyrst_assert(
     ($composer['autoload']['psr-4']['Fyrst\\ShopwareCd\\'] ?? '') === 'src/',
@@ -110,8 +120,21 @@ fyrst_assert(
     ($composer['extra']['symfony']['bundle']['Fyrst\\ShopwareCd\\FyrstShopwareCdBundle'] ?? null) === ['all'],
     'extra.symfony.bundle registers FyrstShopwareCdBundle for all envs'
 );
-fyrst_assert(isset($composer['require']['symfony/console']), 'require.symfony/console is present');
-fyrst_assert(isset($composer['require']['doctrine/dbal']), 'require.doctrine/dbal is present');
+fyrst_assert(
+    ($composer['extra']['branch-alias']['dev-main'] ?? '') === '1.2.x-dev',
+    'branch-alias dev-main is 1.2.x-dev'
+);
+fyrst_assert(isset($composer['require']['symfony/http-kernel']), 'require.symfony/http-kernel is present');
+fyrst_assert(!isset($composer['require']['symfony/console']), 'require.symfony/console is dropped with the rewriter');
+fyrst_assert(!isset($composer['require']['doctrine/dbal']), 'require.doctrine/dbal is dropped with the rewriter');
+fyrst_assert(
+    !str_contains((string) ($composer['description'] ?? ''), 'fyrst:sales-channel:rewrite-urls'),
+    'description does not ship fyrst:sales-channel:rewrite-urls'
+);
+fyrst_assert(
+    str_contains((string) ($composer['description'] ?? ''), 'sales-channel:update:domain'),
+    'description names Shopware sales-channel:update:domain'
+);
 fyrst_assert(!isset($composer['extra']['shopware-plugin-class']), 'not a Shopware plugin (Symfony bundle)');
 fyrst_assert(!is_dir($root . '/scripts'), 'scripts/ create wrapper removed');
 fyrst_assert(is_dir($root . '/overlay'), 'overlay/ is the Flex copy-from-package source');
@@ -507,8 +530,13 @@ fyrst_assert(
     'README operator path is fyrst-cli shopware sync local'
 );
 fyrst_assert(
-    str_contains($readme, 'fyrst:sales-channel:rewrite-urls'),
-    'README names fyrst:sales-channel:rewrite-urls'
+    str_contains($readme, 'sales-channel:update:domain'),
+    'README names sales-channel:update:domain'
+);
+fyrst_assert(
+    !str_contains($readme, 'fyrst:sales-channel:rewrite-urls')
+        && !str_contains($readme, 'sales-channel:replace:url'),
+    'README does not name the deleted rewriter or sales-channel:replace:url'
 );
 fyrst_assert(
     str_contains($readme, 'FyrstShopwareCdBundle'),
@@ -519,16 +547,20 @@ fyrst_assert(
     'README tells shops to composer update fyrst/shopware-cd'
 );
 fyrst_assert(
-    str_contains($readme, '--entrypoint php web bin/console fyrst:sales-channel:rewrite-urls'),
-    'README shows docker compose run --entrypoint php web bin/console'
+    str_contains($readme, 'host from `APP_URL`'),
+    'README says sync passes the host from APP_URL'
+);
+fyrst_assert(
+    str_contains($readme, 'skipped on live'),
+    'README says domain update is skipped on live'
+);
+fyrst_assert(
+    str_contains($readme, 'scheme, port, and path stay as in the dump'),
+    'README says scheme, port, and path stay as in the dump'
 );
 fyrst_assert(
     str_contains($readme, 'SHOPWARE_ALLOW_LIVE_RESTORE=1'),
-    'README states SHOPWARE_ALLOW_LIVE_RESTORE does not bypass rewrite refuse'
-);
-fyrst_assert(
-    str_contains($readme, 'Rewrite uses `APP_URL`'),
-    'README rewrite target is APP_URL'
+    'README states SHOPWARE_ALLOW_LIVE_RESTORE does not turn domain update on'
 );
 fyrst_assert(
     str_contains($readme, '`.env.local`'),
@@ -796,13 +828,48 @@ fyrst_assert(
     'CREATE.md operator path is fyrst-cli shopware sync local'
 );
 fyrst_assert(
-    str_contains($create, 'fyrst:sales-channel:rewrite-urls'),
-    'CREATE.md names fyrst:sales-channel:rewrite-urls'
+    str_contains($create, 'sales-channel:update:domain'),
+    'CREATE.md names sales-channel:update:domain'
 );
 fyrst_assert(
-    str_contains($create, 'Rewrite uses `APP_URL`'),
-    'CREATE.md rewrite target is APP_URL'
+    !str_contains($create, 'fyrst:sales-channel:rewrite-urls')
+        && !str_contains($create, 'sales-channel:replace:url'),
+    'CREATE.md does not name the deleted rewriter or sales-channel:replace:url'
 );
+fyrst_assert(
+    str_contains($create, 'host from `APP_URL`'),
+    'CREATE.md says sync passes the host from APP_URL'
+);
+fyrst_assert(
+    str_contains($create, 'skipped on live'),
+    'CREATE.md says domain update is skipped on live'
+);
+fyrst_assert(
+    str_contains($create, 'scheme, port, and path stay as in the dump'),
+    'CREATE.md says scheme, port, and path stay as in the dump'
+);
+foreach ([
+    'overlay/deploy/README.md',
+    'overlay/deploy/sync-runtime.md',
+    'overlay/deploy/backup-runtime.md',
+] as $rel) {
+    $overlayDoc = (string) file_get_contents($root . '/' . $rel);
+    fyrst_assert(
+        str_contains($overlayDoc, 'sales-channel:update:domain'),
+        $rel . ' names sales-channel:update:domain'
+    );
+    fyrst_assert(
+        !str_contains($overlayDoc, 'fyrst:sales-channel:rewrite-urls')
+            && !str_contains($overlayDoc, 'sales-channel:replace:url'),
+        $rel . ' does not name the deleted rewriter or sales-channel:replace:url'
+    );
+    fyrst_assert(
+        str_contains($overlayDoc, 'host from `APP_URL`')
+            && str_contains($overlayDoc, 'skipped on live')
+            && str_contains($overlayDoc, 'scheme, port, and path stay as in the dump'),
+        $rel . ' says sync passes the host from APP_URL, skipped on live, scheme/port/path stay'
+    );
+}
 fyrst_assert(
     str_contains($create, '`.env.local`'),
     'CREATE.md documents shop-root .env.local'

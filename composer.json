@@ -1,6 +1,6 @@
 {
     "name": "fyrst/shopware-cd",
-    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Provides fyrst:sales-channel:rewrite-urls (sales_channel_domain.url after a non-live DB restore). Overlay files (CI, deploy Compose, .env.example) ship in overlay/ for Symfony Flex copy-from-package. The Flex recipe (fyrst-dev/recipes) is metadata only. Operators use fyrst-cli 0.1.0+ only. Dump stays shopware-cli. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
+    "description": "Thin Packagist library for fyrst.dev Shopware continuous deploy. Ships an empty FyrstShopwareCdBundle so Flex bundles and existing config/bundles.php still load. After a non-live DB restore, fyrst-cli calls Shopware sales-channel:update:domain with the host from APP_URL (skipped on live; scheme, port, and path stay as in the dump). Overlay files (CI, deploy Compose, .env.example) ship in overlay/ for Symfony Flex copy-from-package. The Flex recipe (fyrst-dev/recipes) is metadata only. Operators use fyrst-cli 0.1.0+ only. Dump stays shopware-cli. Root compose.yaml, .gitignore, and .shopware-project.yml / .yaml are owned by shopware-cli. Image builds use docker/Dockerfile from shopware/docker. Not a Shopware installation.",
     "license": "MIT",
     "type": "library",
     "keywords": [
@@ -19,9 +19,6 @@
     },
     "require": {
         "php": ">=8.2",
-        "doctrine/dbal": "^3.6 || ^4.0",
-        "symfony/console": "^6.3 || ^7.0",
-        "symfony/dependency-injection": "^6.3 || ^7.0",
         "symfony/http-kernel": "^6.3 || ^7.0"
     },
     "require-dev": {
@@ -43,7 +40,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "1.1.x-dev"
+            "dev-main": "1.2.x-dev"
         },
         "symfony": {
             "bundle": {

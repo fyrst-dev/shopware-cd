@@ -74,7 +74,7 @@ Do this on **staging** first (every quarter). Live disaster recovery is the same
 
 1. Pick an artifact stamp from `$BACKUP_TARGET/<shop>/staging/` (or copy a live artifact to the staging host).
 2. `fyrst-cli shopware backup recover --from <stamp> --i-understand-this-restores-this-host`
-3. Confirm storefront/admin, then rewrite `sales_channel_domain` if the dump still has live URLs. On staging, `APP_URL` in shop-root `.env` runs `bin/console fyrst:sales-channel:rewrite-urls` after restore; it is refused on live. Payment/shipping webhooks still need a manual check.
+3. Confirm storefront/admin. When the inner apply imported a dump, fyrst-cli passes the host from `APP_URL` to `bin/console sales-channel:update:domain` (skipped on live; scheme, port, and path stay as in the dump). Payment/shipping webhooks still need a manual check.
 4. Record the date on the ClickUp Secrets & checklist page.
 
 Live DR (only when live is already broken):
